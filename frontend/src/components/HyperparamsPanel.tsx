@@ -1,17 +1,17 @@
-import { useState } from 'react';
+import { useState } from 'react'
 
 interface Hyperparams {
-  epochs: number;
-  batch_size: number;
+  epochs: number
+  batch_size: number
   optimizer: {
-    type: string;
-    lr: number;
-    momentum: number;
-  };
-  loss: string;
-  seed: number;
-  train_split: number;
-  shuffle: boolean;
+    type: string
+    lr: number
+    momentum: number
+  }
+  loss: string
+  seed: number
+  train_split: number
+  shuffle: boolean
 }
 
 const DEFAULT_HYPERPARAMS: Hyperparams = {
@@ -22,21 +22,21 @@ const DEFAULT_HYPERPARAMS: Hyperparams = {
   seed: 42,
   train_split: 0.9,
   shuffle: true,
-};
+}
 
 export function HyperparamsPanel({
   onParamsChange
 }: {
   onParamsChange?: (params: Hyperparams) => void
 }) {
-  const [params, setParams] = useState<Hyperparams>(DEFAULT_HYPERPARAMS);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [params, setParams] = useState<Hyperparams>(DEFAULT_HYPERPARAMS)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   const updateParam = <K extends keyof Hyperparams>(key: K, value: Hyperparams[K]) => {
-    const updated = { ...params, [key]: value };
-    setParams(updated);
-    onParamsChange?.(updated);
-  };
+    const updated = { ...params, [key]: value }
+    setParams(updated)
+    onParamsChange?.(updated)
+  }
 
   const updateOptimizer = <K extends keyof Hyperparams['optimizer']>(
     key: K,
@@ -45,10 +45,10 @@ export function HyperparamsPanel({
     const updated = {
       ...params,
       optimizer: { ...params.optimizer, [key]: value },
-    };
-    setParams(updated);
-    onParamsChange?.(updated);
-  };
+    }
+    setParams(updated)
+    onParamsChange?.(updated)
+  }
 
   return (
     <div className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg border border-gray-200">
@@ -186,7 +186,7 @@ export function HyperparamsPanel({
         </div>
       )}
     </div>
-  );
+  )
 }
 
-export { type Hyperparams, DEFAULT_HYPERPARAMS };
+export { type Hyperparams, DEFAULT_HYPERPARAMS }

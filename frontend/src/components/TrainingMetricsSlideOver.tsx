@@ -1,11 +1,11 @@
-import type { FC } from 'react';
+import type { FC } from 'react'
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from './ui/sheet';
+} from './ui/sheet'
 import {
   LineChart,
   Line,
@@ -15,35 +15,23 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from 'recharts';
-
-export interface MetricData {
-  epoch: number;
-  train_loss: number;
-  val_loss: number;
-  train_accuracy: number;
-  val_accuracy: number;
-  learning_rate?: number;
-  epoch_time?: number;
-  samples_per_sec?: number;
-  progress?: number;
-  eta_seconds?: number;
-}
+} from 'recharts'
+import type { MetricData } from '@/api/types'
 
 interface TrainingMetricsSlideOverProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  isTraining: boolean;
-  metrics: MetricData[];
-  currentState: 'queued' | 'running' | 'succeeded' | 'failed' | null;
-  runId?: string;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  isTraining: boolean
+  metrics: MetricData[]
+  currentState: 'queued' | 'running' | 'succeeded' | 'failed' | null
+  runId?: string
 }
 
 function formatTime(seconds: number): string {
-  if (seconds < 60) return `${Math.round(seconds)}s`;
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.round(seconds % 60);
-  return `${mins}m ${secs}s`;
+  if (seconds < 60) return `${Math.round(seconds)}s`
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.round(seconds % 60)
+  return `${mins}m ${secs}s`
 }
 
 export const TrainingMetricsSlideOver: FC<TrainingMetricsSlideOverProps> = ({
@@ -54,7 +42,7 @@ export const TrainingMetricsSlideOver: FC<TrainingMetricsSlideOverProps> = ({
   currentState,
   runId,
 }) => {
-  const latestMetric = metrics.length > 0 ? metrics[metrics.length - 1] : null;
+  const latestMetric = metrics.length > 0 ? metrics[metrics.length - 1] : null
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -370,5 +358,5 @@ export const TrainingMetricsSlideOver: FC<TrainingMetricsSlideOverProps> = ({
         </div>
       </SheetContent>
     </Sheet>
-  );
-};
+  )
+}
