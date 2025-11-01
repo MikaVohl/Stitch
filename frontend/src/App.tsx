@@ -4,6 +4,7 @@ import { BrowserRouter, NavLink, Route, Routes, Navigate } from 'react-router-do
 import Playground from './routes/Playground'
 import Models from './routes/Models'
 import Arena from './routes/Arena'
+import ModelPage from './routes/Model'
 
 
 export default function App() {
@@ -43,6 +44,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/playground" replace />} />
           <Route path="/playground" element={<Playground />} />
           <Route path="/models" element={<Models />} />
+          <Route path="/model/:id" element={<ModelPage />} />
           <Route path="/arena" element={<Arena />} />
         </Routes>
       </BrowserRouter>

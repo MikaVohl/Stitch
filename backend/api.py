@@ -460,6 +460,7 @@ def _start_training_thread(model_id, run_id, architecture, hyperparams):
         payload = dict(data)
         payload.setdefault("run_id", run_id)
         event_queue.put({"event": event_name, "data": payload})
+        print("added to event queue:", payload, flush=True)
 
     def worker():
         try:
@@ -591,7 +592,6 @@ def train_model():
     # Work with deep copies to avoid sharing references across threads.
     architecture = json.loads(json.dumps(architecture))
     hyperparams = json.loads(json.dumps(hyperparams))
-
     store.add_model(
         model_id,
         {
@@ -733,17 +733,15 @@ def stream_run_events(run_id):
             )
             return
 
-        try:
-            while True:
-                try:
-                    item = event_queue.get(timeout=1.0)
-                except queue.Empty:
-                    continue
-                if item is None:
-                    break
-                yield _format_sse(item["event"], item["data"])
-        except GeneratorExit:
-            pass
+        while True:
+            try:
+                item = event_queue.get(timeout=1.0)
+            except queue.Empty:
+                yield ": keep-alive\n\n"
+                continue
+            if item is None:
+                break
+            yield _format_sse(item["event"], item["data"])
 
     return Response(
         stream_with_context(event_generator()), mimetype="text/event-stream"

@@ -1,0 +1,1 @@
+- Stream isn't working, is only received once training is done
