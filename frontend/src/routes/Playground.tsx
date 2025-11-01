@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { DragEvent } from 'react'
 import {
   ReactFlow,
   Background,
@@ -7,6 +8,8 @@ import {
   type Edge,
   type Connection,
   type NodeTypes,
+  type NodeChange,
+  type ReactFlowInstance,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useGraphStore, graphToArchitecture } from '@/store/graphStore'
@@ -22,6 +25,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { DialogClose } from '@radix-ui/react-dialog'
+import { LayersPanel } from '@/components/LayersPanel'
+import type { ActivationType } from '@/types/graph'
 import { useQueryClient } from '@tanstack/react-query'
 
 
@@ -33,7 +38,7 @@ const nodeTypes: NodeTypes = {
 };
 
 export default function Playground() {
-  const { layers, edges, addLayer, addEdge, removeEdge } = useGraphStore()
+  const { layers, edges, addLayer, addEdge, removeEdge, updateLayerPosition, removeLayer } = useGraphStore()
   const [hyperparams, setHyperparams] = useState<Hyperparams>(DEFAULT_HYPERPARAMS)
   const [metricsSlideOverOpen, setMetricsSlideOverOpen] = useState(false)
   const [modelName, setModelName] = useState('')
@@ -61,14 +66,12 @@ export default function Playground() {
   // Convert store state to ReactFlow format with auto-layout
   const reactFlowNodes = useMemo((): Node[] => {
     const layerArray = Object.values(layers);
-    const HORIZONTAL_SPACING = 300;
-    const VERTICAL_CENTER = 250;
-
     return layerArray.map((layer, index) => ({
       id: layer.id,
       type: layer.kind.toLowerCase(),
-      position: { x: index * HORIZONTAL_SPACING + 50, y: VERTICAL_CENTER },
+      position: layer.position ?? { x: index * 300 + 50, y: 250 },
       data: {},
+      draggable: true,
     }));
   }, [layers]);
 
@@ -126,6 +129,70 @@ export default function Playground() {
     [removeEdge]
   );
 
+  const reactFlowWrapper = useRef<HTMLDivElement | null>(null)
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null)
+
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      changes.forEach((change) => {
+        if (change.type === 'position' && change.position) {
+          updateLayerPosition(change.id, change.position)
+        }
+        if (change.type === 'remove') {
+          removeLayer(change.id)
+        }
+      })
+    },
+    [updateLayerPosition, removeLayer]
+  )
+
+  const onDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+  }, [])
+
+  const onDrop = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      event.preventDefault()
+      if (!reactFlowWrapper.current || !reactFlowInstance) return
+      const raw = event.dataTransfer.getData('application/layer-template')
+      if (!raw) return
+
+      try {
+        const payload = JSON.parse(raw) as {
+          kind: 'Dense'
+          params: { units: number; activation: ActivationType }
+        }
+
+        if (payload.kind !== 'Dense') return
+
+        const position = reactFlowInstance.screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        })
+
+        const getId = () => {
+          if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+            return `dense-${crypto.randomUUID()}`
+          }
+          return `dense-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+        }
+
+        addLayer({
+          id: getId(),
+          kind: 'Dense',
+          params: {
+            units: payload.params.units,
+            activation: payload.params.activation,
+          },
+          position,
+        })
+      } catch (error) {
+        console.error('Failed to add layer from drag-and-drop', error)
+      }
+    },
+    [addLayer, reactFlowInstance]
+  )
 
   // Add sample layers on mount with positions
   useEffect(() => {
@@ -135,24 +202,28 @@ export default function Playground() {
         id: 'input-1',
         kind: 'Input',
         params: { size: 784 },
+        position: { x: 50, y: 200 },
       })
 
       addLayer({
         id: 'dense-1',
         kind: 'Dense',
-        params: { units: 128, activation: 'relu' }
+        params: { units: 128, activation: 'relu' },
+        position: { x: 300, y: 200 },
       })
 
       addLayer({
         id: 'dense-2',
         kind: 'Dense',
-        params: { units: 64, activation: 'relu' }
+        params: { units: 64, activation: 'relu' },
+        position: { x: 550, y: 200 },
       })
 
       addLayer({
         id: 'output-1',
         kind: 'Output',
         params: { classes: 10, activation: 'softmax' },
+        position: { x: 800, y: 200 },
       })
 
       // Connect the layers
@@ -185,7 +256,10 @@ export default function Playground() {
     <>
       <div style={{ width: '100vw', height: 'calc(100vh - 4rem)', position: 'relative' }}>
         {/* Hyperparameters Panel */}
-        <HyperparamsPanel onParamsChange={setHyperparams} />
+        <div className="absolute top-4 left-4 z-10 flex flex-col gap-4">
+          <HyperparamsPanel onParamsChange={setHyperparams} />
+          <LayersPanel />
+        </div>
 
         <Dialog>
           <DialogTrigger asChild>
@@ -255,20 +329,26 @@ export default function Playground() {
           </button>
         )}
 
-        <ReactFlow
-          nodes={reactFlowNodes}
-          edges={reactFlowEdges}
-          onConnect={onConnect}
-          onEdgesChange={onEdgesChange}
-          nodeTypes={nodeTypes}
-          fitView
-          snapToGrid
-          snapGrid={[15, 15]}
-          defaultEdgeOptions={{ animated: true }}
-        >
-          <Background />
-          <Controls position="bottom-left" showInteractive={false} className="shadow-lg" />
-        </ReactFlow>
+        <div className="h-full w-full" ref={reactFlowWrapper}>
+          <ReactFlow
+            nodes={reactFlowNodes}
+            edges={reactFlowEdges}
+            onConnect={onConnect}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+            nodeTypes={nodeTypes}
+            fitView
+            snapToGrid
+            snapGrid={[15, 15]}
+            defaultEdgeOptions={{ animated: true }}
+            onInit={setReactFlowInstance}
+          >
+            <Background />
+            <Controls position="bottom-left" showInteractive={false} className="shadow-lg" />
+          </ReactFlow>
+        </div>
       </div>
 
       <TrainingMetricsSlideOver
