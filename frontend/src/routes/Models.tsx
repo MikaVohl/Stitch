@@ -1,6 +1,7 @@
-import {useModels, type StoredLayer } from '@/hooks/useModels';
+import { useModels, type StoredLayer } from '@/hooks/useModels';
+import { Link } from 'react-router-dom';
 
-function summarizeArchitecture(layers?: StoredLayer[]): string {
+export function summarizeArchitecture(layers?: StoredLayer[]): string {
   if (!layers || layers.length === 0) return 'No layers recorded.'
 
   return layers
@@ -14,7 +15,7 @@ function summarizeArchitecture(layers?: StoredLayer[]): string {
     .join('  •  ')
 }
 
-function summarizeHyperparams(hyperparams?: Record<string, unknown>): string {
+export function summarizeHyperparams(hyperparams?: Record<string, unknown>): string {
   if (!hyperparams || Object.keys(hyperparams).length === 0) {
     return 'No hyperparameters recorded.'
   }
@@ -81,7 +82,7 @@ export default function Models() {
               >
                 <header className="flex items-start justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900">{model.name}</h2>
+                    <Link to={`./${model.model_id}`} className="text-lg font-semibold text-gray-900">Model {model.name}</Link>
                     <p className="mt-1 text-sm text-gray-500">
                       {model.created_at
                         ? new Date(model.created_at).toLocaleString()

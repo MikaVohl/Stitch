@@ -6,8 +6,6 @@ import Models from './routes/Models'
 import Arena from './routes/Arena'
 import ModelPage from './routes/Model'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-
 
 const queryClient = new QueryClient()
 
@@ -51,7 +49,7 @@ export default function App() {
             <Route path="/" element={<Navigate to="/playground" replace />} />
             <Route path="/playground" element={<Playground />} />
             <Route path="/models" element={<Models />} />
-            <Route path="/model/:id" element={<ModelPage />} />
+            <Route path="/models/:id" element={<ModelPage />} />
             <Route path="/arena" element={<Arena />} />
           </Routes>
         </BrowserRouter>
