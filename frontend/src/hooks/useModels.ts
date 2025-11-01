@@ -11,6 +11,7 @@ export type StoredLayer = {
 
 
 export type StoredModel = {
+  name: string
   model_id: string
   created_at?: string
   architecture?: {
