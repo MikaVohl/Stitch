@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import clsx from 'clsx'
 
 interface Hyperparams {
   epochs: number
@@ -25,12 +26,13 @@ const DEFAULT_HYPERPARAMS: Hyperparams = {
 }
 
 export function HyperparamsPanel({
-  onParamsChange
+  onParamsChange,
+  className,
 }: {
   onParamsChange?: (params: Hyperparams) => void
+  className?: string
 }) {
   const [params, setParams] = useState<Hyperparams>(DEFAULT_HYPERPARAMS)
-  const [isExpanded, setIsExpanded] = useState(false)
 
   const updateParam = <K extends keyof Hyperparams>(key: K, value: Hyperparams[K]) => {
     const updated = { ...params, [key]: value }
@@ -51,24 +53,16 @@ export function HyperparamsPanel({
   }
 
   return (
-    <div className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg border border-gray-200">
+    <div className={clsx('bg-white rounded-lg shadow-lg border border-gray-200', className)}>
       {/* Header */}
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-gray-50 rounded-t-lg transition-colors"
+        className="w-full px-4 py-2.5 flex items-center justify-between rounded-t-lg transition-colors"
       >
         <span className="font-semibold text-gray-700 text-sm">Hyperparameters</span>
-        <svg
-          className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-          fill="currentColor"
-          viewBox="0 0 20 20"
-        >
-          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-        </svg>
       </button>
 
       {/* Expanded Panel */}
-      {isExpanded && (
+      
         <div className="p-4 space-y-3 border-t border-gray-200 min-w-[280px]">
           {/* Epochs */}
           <div className="flex items-center justify-between">
@@ -184,7 +178,6 @@ export function HyperparamsPanel({
             />
           </div>
         </div>
-      )}
     </div>
   )
 }

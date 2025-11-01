@@ -9,6 +9,7 @@ interface GraphState {
   addLayer: (layer: AnyLayer) => void
   removeLayer: (id: string) => void
   updateLayerParams: (id: string, params: Record<string, any>) => void
+  updateLayerPosition: (id: string, position: { x: number; y: number }) => void
   addEdge: (edge: GraphEdge) => void
   removeEdge: (id: string) => void
   recomputeShapes: () => void
@@ -70,6 +71,19 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       }
     })
     get().recomputeShapes()
+  },
+
+  updateLayerPosition: (id, position) => {
+    set((state) => {
+      const layer = state.layers[id]
+      if (!layer) return state
+      return {
+        layers: {
+          ...state.layers,
+          [id]: { ...layer, position } as AnyLayer,
+        } as Record<string, AnyLayer>,
+      }
+    })
   },
 
   addEdge: (edge) => {

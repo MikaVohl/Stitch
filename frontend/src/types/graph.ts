@@ -13,6 +13,10 @@ export interface Layer {
   kind: LayerKind;
   params: Record<string, any>;
   shapeOut?: TensorShape;
+  position?: {
+    x: number;
+    y: number;
+  };
 }
 
 // Specific layer types
