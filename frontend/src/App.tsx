@@ -17,19 +17,23 @@ export default function App() {
             <nav className="flex gap-4 text-sm font-medium">
               <NavLink
                 to="/playground"
-
+                className="flex items-center gap-2"
               >
+                <img src="/MAIS-build.svg" alt="" className="h-4 w-4" />
                 Build
               </NavLink>
               <NavLink
                 to="/models"
-
+                className="flex items-center gap-2"
               >
+                <img src="/MAIS-models.svg" alt="" className="h-4 w-4" />
                 Models
               </NavLink>
               <NavLink
                 to="/arena"
+                className="flex items-center gap-2"
               >
+                <img src="/MAIS-arena.svg" alt="" className="h-4 w-4" />
                 Arena
               </NavLink>
             </nav>
