@@ -1,144 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
-
-type StoredLayer = {
-  type: string
-  in?: number
-  out?: number
-  [key: string]: unknown
-}
-
-type StoredModel = {
-  model_id: string
-  created_at?: string
-  architecture?: {
-    input_size?: number
-    layers?: StoredLayer[]
-  }
-  hyperparams?: Record<string, unknown>
-}
-
-export default function Models() {
-  const [models, setModels] = useState<StoredModel[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const controller = new AbortController()
-
-    async function fetchModels() {
-      try {
-        setLoading(true)
-        setError(null)
-
-        const response = await fetch('/api/models', { signal: controller.signal })
-        if (!response.ok) {
-          throw new Error('Failed to load models')
-        }
-
-        const data = await response.json()
-        if (Array.isArray(data)) {
-          setModels(data)
-        } else {
-          setModels([])
-        }
-      } catch (err) {
-        if ((err as Error).name === 'AbortError') return
-        setError((err as Error).message || 'Unable to load models')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchModels()
-
-    return () => controller.abort()
-  }, [])
-
-  const content = useMemo(() => {
-    if (loading) {
-      return (
-        <div className="rounded-xl border border-gray-200 bg-white p-8 text-gray-600 shadow-sm">
-          Loading your models...
-        </div>
-      )
-    }
-
-    if (error) {
-      return (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-red-700 shadow-sm">
-          {error}
-        </div>
-      )
-    }
-
-    if (models.length === 0) {
-      return (
-        <div className="rounded-xl border border-gray-200 bg-white p-8 text-gray-600 shadow-sm">
-          <p>No models saved yet. Train a network in the Playground to populate this list.</p>
-        </div>
-      )
-    }
-
-    return (
-      <div className="grid gap-6 lg:grid-cols-2">
-        {models.map((model) => (
-          <article
-            key={model.model_id}
-            className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md"
-          >
-            <header className="flex items-start justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Model {model.model_id}</h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  {model.created_at
-                    ? new Date(model.created_at).toLocaleString()
-                    : 'Creation time unknown'}
-                </p>
-              </div>
-              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                {model.architecture?.layers?.length ?? 0} layers
-              </span>
-            </header>
-
-            <dl className="mt-4 space-y-3 text-sm text-gray-600">
-              <div className="flex gap-2">
-                <dt className="w-32 font-medium text-gray-900">Input size</dt>
-                <dd>{model.architecture?.input_size ?? '—'}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-gray-900">Architecture</dt>
-                <dd className="mt-1 rounded-lg bg-gray-50 p-3 text-xs font-mono text-gray-700">
-                  {summarizeArchitecture(model.architecture?.layers)}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-gray-900">Hyperparameters</dt>
-                <dd className="mt-1 rounded-lg bg-gray-50 p-3 text-xs text-gray-700">
-                  {summarizeHyperparams(model.hyperparams)}
-                </dd>
-              </div>
-            </dl>
-          </article>
-        ))}
-      </div>
-    )
-  }, [error, loading, models])
-
-  return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 py-10">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 sm:px-6 lg:px-8">
-        <header className="flex flex-col gap-2">
-          <h1 className="text-3xl font-semibold text-gray-900">Models</h1>
-          <p className="text-sm text-gray-600">
-            Every training run creates a snapshot of the architecture and hyperparameters you used. Review them here
-            before jumping back into the arena.
-          </p>
-        </header>
-        {content}
-      </div>
-    </main>
-  )
-}
+import useModels, { type StoredLayer } from '@/hooks/useModels';
 
 function summarizeArchitecture(layers?: StoredLayer[]): string {
   if (!layers || layers.length === 0) return 'No layers recorded.'
@@ -172,3 +32,91 @@ function summarizeHyperparams(hyperparams?: Record<string, unknown>): string {
 
   return parts.join('  •  ')
 }
+
+export default function Models() {
+  const { data: models, isLoading, isError, error } = useModels();
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-8 text-gray-600 shadow-sm">
+        Loading your models...
+      </div>
+    )
+  }
+
+
+  if (isError) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-red-700 shadow-sm">
+        {error.message}
+      </div>
+    )
+  }
+
+  if (models?.length === 0) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-8 text-gray-600 shadow-sm">
+        <p>No models saved yet. Train a network in the Playground to populate this list.</p>
+      </div>
+    )
+  }
+
+  return (
+    <main className="min-h-[calc(100vh-4rem)] bg-gray-50 py-10">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 sm:px-6 lg:px-8">
+        <header className="flex flex-col gap-2">
+          <h1 className="text-3xl font-semibold text-gray-900">Models</h1>
+          <p className="text-sm text-gray-600">
+            Every training run creates a snapshot of the architecture and hyperparameters you used. Review them here
+            before jumping back into the arena.
+          </p>
+        </header>
+        <div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            {models?.map((model) => (
+              <article
+                key={model.model_id}
+                className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md"
+              >
+                <header className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Model {model.model_id}</h2>
+                    <p className="mt-1 text-sm text-gray-500">
+                      {model.created_at
+                        ? new Date(model.created_at).toLocaleString()
+                        : 'Creation time unknown'}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                    {model.architecture?.layers?.length ?? 0} layers
+                  </span>
+                </header>
+
+                <dl className="mt-4 space-y-3 text-sm text-gray-600">
+                  <div className="flex gap-2">
+                    <dt className="w-32 font-medium text-gray-900">Input size</dt>
+                    <dd>{model.architecture?.input_size ?? '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-medium text-gray-900">Architecture</dt>
+                    <dd className="mt-1 rounded-lg bg-gray-50 p-3 text-xs font-mono text-gray-700">
+                      {summarizeArchitecture(model.architecture?.layers)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-medium text-gray-900">Hyperparameters</dt>
+                    <dd className="mt-1 rounded-lg bg-gray-50 p-3 text-xs text-gray-700">
+                      {summarizeHyperparams(model.hyperparams)}
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+        </div>
+      </div>
+    </main>
+  )
+}
+
