@@ -22,6 +22,13 @@ class Store:
         with self._lock:
             return self._models.get(model_id)
 
+    def update_model(self, model_id: str, updates: dict) -> None:
+        """Update a model with new data."""
+        with self._lock:
+            model = self._models.get(model_id)
+            if model is not None:
+                model.update(updates)
+
     def list_models(self) -> list:
         """List all models."""
         with self._lock:

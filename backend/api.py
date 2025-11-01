@@ -1,18 +1,28 @@
+import os
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+os.environ.setdefault("OMP_WAIT_POLICY", "PASSIVE")
+
 from datetime import datetime, timezone
 import json
 import queue
 import threading
 import uuid
 import random
+from pathlib import Path
 
 from flask import Flask, Response, jsonify, request, stream_with_context
 
 import torch
+torch.set_num_threads(1)
+torch.set_num_interop_threads(1)
 from torch import nn
-from torch.utils.data import DataLoader, TensorDataset, random_split
+from torch.utils.data import DataLoader, random_split, Subset
+from torchvision import datasets, transforms
 
 
 from controllers.model_controller import model_bp
+from store import store
 
 """
 Expected request payload:
@@ -50,11 +60,16 @@ DEFAULT_HYPERPARAMS = {
     "max_samples": 4096,
 }
 
-# In-memory store for models and runs to keep the example self-contained.
-_store_lock = threading.Lock()
-_models = {}
-_runs = {}
-_run_event_queues = {}
+BACKEND_DIR = Path(__file__).resolve().parent
+MODEL_SAVE_DIR = BACKEND_DIR / "saved_models"
+MODEL_SAVE_DIR.mkdir(parents=True, exist_ok=True)
+MNIST_DATA_ROOT = BACKEND_DIR / "data" / "mnist"
+MNIST_DATA_ROOT.mkdir(parents=True, exist_ok=True)
+
+
+def _model_file_path(model_id: str) -> Path:
+    return MODEL_SAVE_DIR / f"model_{model_id}.pkl"
+
 
 app = Flask(__name__)
 
@@ -209,31 +224,41 @@ def _build_model(architecture):
     return nn.Sequential(*layers)
 
 
-def _synthetic_dataset(size, input_size, seed):
+def _load_mnist_dataset(train: bool):
+    transform = transforms.Compose([transforms.ToTensor()])
+    try:
+        dataset = datasets.MNIST(
+            root=str(MNIST_DATA_ROOT),
+            train=train,
+            download=True,
+            transform=transform,
+        )
+    except Exception as exc:
+        raise RuntimeError(f"Failed to load MNIST dataset: {exc}") from exc
+    return dataset
+
+
+def _prepare_dataloaders(batch_size, train_split, shuffle, max_samples, seed):
     generator = torch.Generator()
     if seed is not None:
         generator.manual_seed(seed)
 
-    data = torch.rand(size, input_size, generator=generator)
-    labels = torch.randint(0, 10, (size,), generator=generator)
-    return TensorDataset(data, labels)
+    dataset = _load_mnist_dataset(train=True)
+    dataset_size = len(dataset)
 
+    desired_samples = max_samples or dataset_size
+    desired_samples = max(desired_samples, batch_size * 2)
+    desired_samples = min(desired_samples, dataset_size)
+    desired_samples = max(2, desired_samples)
 
-def _prepare_dataloaders(batch_size, train_split, shuffle, max_samples, seed):
-    total_samples = max(
-        max_samples or DEFAULT_HYPERPARAMS["max_samples"], batch_size * 2
-    )
-    total_samples = max(2, total_samples)
-    dataset = _synthetic_dataset(total_samples, MNIST_INPUT_SIZE, seed)
+    if desired_samples < dataset_size:
+        indices = torch.randperm(dataset_size, generator=generator)[:desired_samples]
+        dataset = Subset(dataset, indices.tolist())
 
     train_len = max(1, int(len(dataset) * train_split))
     if train_len >= len(dataset):
         train_len = len(dataset) - 1
     val_len = max(1, len(dataset) - train_len)
-
-    generator = torch.Generator()
-    if seed is not None:
-        generator.manual_seed(seed)
 
     train_dataset, val_dataset = random_split(
         dataset, [train_len, val_len], generator=generator
@@ -365,10 +390,71 @@ def _format_sse(event_name, data):
     return f"event: {event_name}\ndata: {json.dumps(data)}\n\n"
 
 
-def _start_training_thread(run_id, architecture, hyperparams):
+def _persist_model_weights(model_id: str, model: nn.Module) -> Path:
+    MODEL_SAVE_DIR.mkdir(parents=True, exist_ok=True)
+    model_cpu = model.to("cpu")
+    output_path = _model_file_path(model_id)
+    torch.save(model_cpu.state_dict(), output_path)
+    return output_path
+
+
+@app.route("/api/models/<model_id>/save", methods=["POST"])
+def save_trained_model(model_id: str):
+    if not request.is_json:
+        return _error_response("Expected JSON payload.", status=415)
+
+    try:
+        payload = request.get_json(force=True)
+    except Exception:
+        return _error_response("Malformed JSON payload.")
+
+    if not isinstance(payload, dict):
+        return _error_response("Payload must be a JSON object.")
+
+    run_id = payload.get("run_id")
+    if not isinstance(run_id, str) or not run_id:
+        return _error_response("`run_id` is required.", status=400)
+
+    model_entry = store.get_model(model_id)
+    if model_entry is None:
+        return _error_response("Unknown model_id.", status=404)
+
+    run_entry = store.get_run(run_id)
+    if run_entry is None or run_entry.get("model_id") != model_id:
+        return _error_response("Run does not exist for given model.", status=404)
+
+    if run_entry.get("state") != "succeeded":
+        return _error_response("Run is not ready for saving.", status=409)
+
+    saved_model_path = run_entry.get("saved_model_path")
+    if not saved_model_path:
+        return _error_response("Model weights have not been persisted.", status=409)
+
+    output_path = Path(saved_model_path)
+    if not output_path.exists():
+        return _error_response("Persisted model file is missing.", status=500)
+
+    store.update_model(
+        model_id,
+        {
+            "trained": True,
+            "saved_model_path": str(output_path),
+            "last_trained_at": model_entry.get("last_trained_at") or _utcnow_iso(),
+        },
+    )
+
+    response = {
+        "model_id": model_id,
+        "run_id": run_id,
+        "saved_path": str(output_path),
+    }
+
+    return jsonify(response), 200
+
+
+def _start_training_thread(model_id, run_id, architecture, hyperparams):
     event_queue = queue.Queue()
-    with _store_lock:
-        _run_event_queues[run_id] = event_queue
+    store.add_event_queue(run_id, event_queue)
 
     def emit(event_name, data):
         payload = dict(data)
@@ -388,10 +474,7 @@ def _start_training_thread(run_id, architecture, hyperparams):
 
             captured_metrics = []
 
-            with _store_lock:
-                run_entry = _runs.get(run_id)
-                if run_entry is not None:
-                    run_entry["state"] = "running"
+            store.update_run(run_id, {"state": "running"})
 
             emit("state", {"state": "running"})
 
@@ -399,11 +482,13 @@ def _start_training_thread(run_id, architecture, hyperparams):
                 metric_copy = dict(metric)
                 captured_metrics.append(metric_copy)
                 emit("metric", metric_copy)
-                with _store_lock:
-                    run_entry_inner = _runs.get(run_id)
-                    if run_entry_inner is not None:
-                        run_entry_inner["metrics"] = list(captured_metrics)
-                        run_entry_inner["epoch"] = metric_copy["epoch"]
+                store.update_run(
+                    run_id,
+                    {
+                        "metrics": list(captured_metrics),
+                        "epoch": metric_copy["epoch"],
+                    },
+                )
 
             metrics, test_accuracy = _train_with_torch(
                 model,
@@ -413,42 +498,42 @@ def _start_training_thread(run_id, architecture, hyperparams):
                 on_checkpoint=on_checkpoint,
             )
 
-            state_dict_cpu = {
-                key: tensor.detach().cpu().clone()
-                for key, tensor in model.state_dict().items()
-            }
-
-            with _store_lock:
-                run_entry = _runs.get(run_id)
-                if run_entry is not None:
-                    run_entry.update(
-                        {
-                            "state": "succeeded",
-                            "metrics": metrics,
-                            "test_accuracy": test_accuracy,
-                            "completed_at": _utcnow_iso(),
-                            "state_dict": state_dict_cpu,
-                        }
-                    )
+            output_path = _persist_model_weights(model_id, model)
+            completed_at = _utcnow_iso()
+            store.update_run(
+                run_id,
+                {
+                    "state": "succeeded",
+                    "metrics": metrics,
+                    "test_accuracy": test_accuracy,
+                    "completed_at": completed_at,
+                    "saved_model_path": str(output_path),
+                },
+            )
+            store.update_model(
+                model_id,
+                {
+                    "trained": True,
+                    "saved_model_path": str(output_path),
+                    "last_trained_at": completed_at,
+                },
+            )
 
             emit("state", {"state": "succeeded", "test_accuracy": test_accuracy})
         except Exception as exc:
             error_message = str(exc)
-            with _store_lock:
-                run_entry = _runs.get(run_id)
-                if run_entry is not None:
-                    run_entry.update(
-                        {
-                            "state": "failed",
-                            "error": error_message,
-                            "completed_at": _utcnow_iso(),
-                        }
-                    )
+            store.update_run(
+                run_id,
+                {
+                    "state": "failed",
+                    "error": error_message,
+                    "completed_at": _utcnow_iso(),
+                },
+            )
             emit("state", {"state": "failed", "error": error_message})
         finally:
             event_queue.put(None)
-            with _store_lock:
-                _run_event_queues.pop(run_id, None)
+            store.remove_event_queue(run_id)
 
     # Emit initial queued state before the worker starts.
     emit("state", {"state": "queued"})
@@ -507,14 +592,23 @@ def train_model():
     architecture = json.loads(json.dumps(architecture))
     hyperparams = json.loads(json.dumps(hyperparams))
 
-    with _store_lock:
-        _models[model_id] = {
+    store.add_model(
+        model_id,
+        {
             "model_id": model_id,
             "architecture": architecture,
             "hyperparams": hyperparams,
             "created_at": created_at,
-        }
-        _runs[run_id] = {
+            "name": None,
+            "description": None,
+            "trained": False,
+            "saved_model_path": None,
+            "last_trained_at": None,
+        },
+    )
+    store.add_run(
+        run_id,
+        {
             "run_id": run_id,
             "model_id": model_id,
             "state": "queued",
@@ -524,9 +618,11 @@ def train_model():
             "created_at": created_at,
             "events_url": f"/api/runs/{run_id}/events",
             "hyperparams": hyperparams,
-        }
+            "saved_model_path": None,
+        },
+    )
 
-    _start_training_thread(run_id, architecture, hyperparams)
+    _start_training_thread(model_id, run_id, architecture, hyperparams)
 
     response = {
         "model_id": model_id,
@@ -566,24 +662,36 @@ def infer_single_pixel_map():
     except ValueError as exc:
         return _error_response(str(exc), status=422)
 
-    with _store_lock:
-        run_entry = _runs.get(run_id)
-        if run_entry is None:
-            return _error_response("Unknown run_id.", status=404)
-        state = run_entry.get("state")
-        state_dict = run_entry.get("state_dict")
-        model_id = run_entry.get("model_id")
+    run_entry = store.get_run(run_id)
+    if run_entry is None:
+        return _error_response("Unknown run_id.", status=404)
+    state = run_entry.get("state")
+    saved_model_path = run_entry.get("saved_model_path")
+    model_id = run_entry.get("model_id")
 
-        model_entry = _models.get(model_id) if model_id else None
+    model_entry = store.get_model(model_id) if model_id else None
 
-    if state_dict is None or state != "succeeded":
+    if state != "succeeded":
         return _error_response("Run is not ready for inference.", status=409)
     if model_entry is None:
         return _error_response("Associated model not found.", status=404)
+    if not saved_model_path:
+        return _error_response("Persisted model file not available.", status=409)
+
+    model_path = Path(saved_model_path)
+    if not model_path.exists():
+        return _error_response("Persisted model file is missing.", status=500)
 
     architecture = model_entry["architecture"]
     model = _build_model(architecture)
-    model.load_state_dict({key: tensor.clone() for key, tensor in state_dict.items()})
+
+    try:
+        state_dict = torch.load(model_path, map_location="cpu")
+    except Exception:
+        return _error_response("Failed to load persisted model.", status=500)
+
+    model.load_state_dict(state_dict)
+    del state_dict
     model.eval()
 
     with torch.no_grad():
@@ -604,9 +712,8 @@ def infer_single_pixel_map():
 
 @app.route("/api/runs/<run_id>/events", methods=["GET"])
 def stream_run_events(run_id):
-    with _store_lock:
-        run = _runs.get(run_id)
-        event_queue = _run_event_queues.get(run_id)
+    run = store.get_run(run_id)
+    event_queue = store.get_event_queue(run_id)
 
     if run is None:
         return _error_response("Unknown run_id.", status=404)
