@@ -19,21 +19,21 @@ export default function App() {
                 to="/playground"
                 className="flex items-center gap-2"
               >
-                <img src="/MAIS-build.svg" alt="" className="h-4 w-4" />
+                <img src="/build.svg" alt="" className="h-4 w-4" />
                 Build
               </NavLink>
               <NavLink
                 to="/models"
                 className="flex items-center gap-2"
               >
-                <img src="/MAIS-models.svg" alt="" className="h-4 w-4" />
+                <img src="/models.svg" alt="" className="h-4 w-4" />
                 Models
               </NavLink>
               <NavLink
                 to="/arena"
                 className="flex items-center gap-2"
               >
-                <img src="/MAIS-arena.svg" alt="" className="h-4 w-4" />
+                <img src="/arena.svg" alt="" className="h-4 w-4" />
                 Arena
               </NavLink>
             </nav>

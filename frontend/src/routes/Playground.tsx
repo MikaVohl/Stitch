@@ -17,6 +17,7 @@ import { HyperparamsPanel, type Hyperparams, DEFAULT_HYPERPARAMS } from '@/compo
 import { validateConnection, notifyConnectionError, hasIncomingConnection } from '@/lib/shapeInference'
 import { TrainingMetricsSlideOver } from '@/components/TrainingMetricsSlideOver'
 import { useTrainingMetrics } from '@/hooks/useTraining'
+import { SaveModel } from '@/hooks/useModels'
 
 
 const nodeTypes: NodeTypes = {
@@ -29,6 +30,7 @@ export default function Playground() {
   const { layers, edges, addLayer, addEdge, removeEdge } = useGraphStore()
   const [hyperparams, setHyperparams] = useState<Hyperparams>(DEFAULT_HYPERPARAMS)
   const [metricsSlideOverOpen, setMetricsSlideOverOpen] = useState(false)
+  const mutation = SaveModel();
   const {
     metrics,
     currentState,
@@ -38,6 +40,7 @@ export default function Playground() {
   } = useTrainingMetrics()
 
   function save() {
+    // mutation.mutate({})
     
   }
 

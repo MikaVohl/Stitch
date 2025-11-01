@@ -1,4 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
+import axios from "axios";
+
+export type StoredLayer = {
+  type: string
+  in?: number
+  out?: number
+  [key: string]: unknown
+}
+
 
 export type StoredModel = {
   model_id: string
@@ -10,16 +20,17 @@ export type StoredModel = {
   hyperparams?: Record<string, unknown>
 }
 
-
-export type StoredLayer = {
-  type: string
-  in?: number
-  out?: number
-  [key: string]: unknown
+export function SaveModel() {
+  return useMutation({
+    mutationFn: (name) => {
+      return axios.post('/todos', name)
+    },
+  })
 }
 
 
-export default function useModels() {
+
+export function useModels() {
   return useQuery({
     queryKey: ['models'],
     queryFn: async (): Promise<StoredModel[]> => {
@@ -31,8 +42,8 @@ export default function useModels() {
         },
       })
 
-
       return response.json()
     }
   })
 }
+

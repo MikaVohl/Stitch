@@ -1,4 +1,4 @@
-import useModels, { type StoredLayer } from '@/hooks/useModels';
+import {useModels, type StoredLayer } from '@/hooks/useModels';
 
 function summarizeArchitecture(layers?: StoredLayer[]): string {
   if (!layers || layers.length === 0) return 'No layers recorded.'
