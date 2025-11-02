@@ -1,112 +1,33 @@
-import { useCallback } from 'react'
+import { useMemo, useEffect, useRef } from 'react'
 import {
   ReactFlow,
   Background,
   Controls,
   type Node,
   type Edge,
+  type NodeProps,
+  type NodeTypes,
+  Position,
+  Handle,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import type { StoredLayer } from '@/hooks/useModels'
 
-function createNodes(layers: StoredLayer[], currentDrawing?: number[][]): Node[] {
-  const nodes: Node[] = []
-  const verticalSpacing = 80
-  const horizontalSpacing = 600 // Increased spacing between layers
-  
-  layers.forEach((layer, layerIndex) => {
-    const numNeurons = layer.type === 'linear' ? layer.out ?? 1 : 1
-    
-    if (layerIndex === 0 && numNeurons === 784) {
-      // Special handling for 28x28 input layer
-      const gridSize = 28
-      const nodeSize = 12
-      const spacing = 14
-      const totalWidth = gridSize * spacing
-      const totalHeight = gridSize * spacing
-      
-      for (let row = 0; row < gridSize; row++) {
-        for (let col = 0; col < gridSize; col++) {
-          const index = row * gridSize + col
-          const value = currentDrawing?.[row]?.[col] ?? 0
-          const intensity = Math.floor(value * 255)
-          
-          const node: Node = {
-            id: `${layerIndex}-${index}`,
-            position: {
-              x: col * spacing - totalWidth / 2,
-              y: row * spacing - totalHeight / 2 + 150
-            },
-            data: { label: '' },
-            className: 'rounded-full',
-            style: {
-              width: nodeSize,
-              height: nodeSize,
-              borderRadius: '50%',
-              backgroundColor: `rgb(${intensity}, ${intensity}, ${intensity})`,
-              border: '1px solid #93c5fd'
-            }
-          }
-          nodes.push(node)
-        }
-      }
-    } else {
-      // Regular layer handling
-      for (let i = 0; i < numNeurons; i++) {
-        const node: Node = {
-          id: `${layerIndex}-${i}`,
-          position: {
-            x: layerIndex * horizontalSpacing,
-            y: i * verticalSpacing - (numNeurons * verticalSpacing) / 2 + 150
-          },
-          data: {
-            label: layer.type === 'linear' ? '' : layer.type
-          },
-          className: 'rounded-full bg-blue-500 text-white text-xs',
-          style: {
-            width: 40,
-            height: 40,
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '10px'
-          }
-        }
-        nodes.push(node)
-      }
-    }
-  })
-  
-  return nodes
+const MNIST_SIDE = 28
+const HORIZONTAL_SPACING = 220
+const VERTICAL_SPACING = 70
+const SAMPLE_FACTOR = 8
+const OUTPUT_NEURONS = 10
+
+type GridNodeData = {
+  drawing: number[][] | null
 }
 
-function createEdges(layers: StoredLayer[]): Edge[] {
-  const edges: Edge[] = []
-  
-  // Connect each node to all nodes in the next layer
-  for (let layerIndex = 0; layerIndex < layers.length - 1; layerIndex++) {
-    const currentLayerSize = layers[layerIndex].type === 'linear' 
-      ? layers[layerIndex].out ?? 1 
-      : 1
-    const nextLayerSize = layers[layerIndex + 1].type === 'linear'
-      ? layers[layerIndex + 1].out ?? 1
-      : 1
-      
-    for (let i = 0; i < currentLayerSize; i++) {
-      for (let j = 0; j < nextLayerSize; j++) {
-        edges.push({
-          id: `${layerIndex}-${i}-to-${layerIndex + 1}-${j}`,
-          source: `${layerIndex}-${i}`,
-          target: `${layerIndex + 1}-${j}`,
-          style: { stroke: '#93c5fd', strokeWidth: 1 },
-          type: 'straight',
-        })
-      }
-    }
-  }
-  
-  return edges
+type NeuronNodeData = {
+  layerIndex: number
+  totalNeurons: number
+  sampledIndex: number
+  isOutput: boolean
 }
 
 interface NetworkVisualizationProps {
@@ -114,31 +35,263 @@ interface NetworkVisualizationProps {
   currentDrawing?: number[][]
 }
 
-export function NetworkVisualization({ layers, currentDrawing }: NetworkVisualizationProps) {
-  const nodes = createNodes(layers, currentDrawing)
-  const edges = createEdges(layers)
-  
-  const handleInit = useCallback(() => {
-    // Center the view when the flow is initialized
-  }, [])
-  
+function sanitizeLayers(layers: StoredLayer[]): StoredLayer[] {
+  return layers.filter((layer) => {
+    const layerType = layer.type.toLowerCase()
+    return (
+      layerType === 'input' ||
+      layerType === 'linear' ||
+      layerType === 'dense' ||
+      layerType === 'output'
+    )
+  })
+}
+
+function detectNeuronCount(layer: StoredLayer): number {
+  if (typeof layer.out === 'number') return Math.max(1, layer.out)
+
+  const record = layer as Record<string, unknown>
+  const maybeUnits = record.units
+  if (typeof maybeUnits === 'number') return Math.max(1, maybeUnits)
+
+  const maybeSize = record.size
+  if (typeof maybeSize === 'number') return Math.max(1, maybeSize)
+
+  if (typeof layer.in === 'number') return Math.max(1, layer.in)
+  return 1
+}
+
+function clampedMatrix(drawing?: number[][]): number[][] | null {
+  if (!drawing || drawing.length === 0 || drawing[0]?.length === 0) return null
+  if (drawing.length !== MNIST_SIDE || drawing[0].length !== MNIST_SIDE) return null
+  return drawing
+}
+
+function buildNodesAndEdges(
+  layers: StoredLayer[],
+  drawing: number[][] | null
+): { nodes: Node<GridNodeData | NeuronNodeData>[]; edges: Edge[] } {
+  const filtered = sanitizeLayers(layers)
+  const nodes: Node<GridNodeData | NeuronNodeData>[] = []
+  const edges: Edge[] = []
+
+  // Input grid node always present so the input layer can be skipped later.
+  nodes.push({
+    id: 'grid-0',
+    type: 'drawingGrid',
+    position: { x: 0, y: 0 },
+    data: { drawing },
+    draggable: false,
+    selectable: false,
+    sourcePosition: Position.Right,
+  })
+
+  let previousNodeIds: string[] = ['grid-0']
+  let renderIndex = 1
+
+  filtered.forEach((layer, layerIndex) => {
+    const layerType = layer.type.toLowerCase()
+
+    // Skip explicit input layers; the drawing grid already represents them visually.
+    if (layerType === 'input') {
+      previousNodeIds = ['grid-0']
+      return
+    }
+
+    const isOutputLayer = layerIndex === filtered.length - 1
+    const neuronCount = detectNeuronCount(layer)
+    const displayCount = isOutputLayer
+      ? OUTPUT_NEURONS
+      : Math.max(1, Math.ceil(neuronCount / SAMPLE_FACTOR))
+    const yOffset = ((displayCount - 1) * VERTICAL_SPACING) / 2
+
+    const currentNodeIds: string[] = []
+
+    for (let i = 0; i < displayCount; i++) {
+      const nodeId = `layer-${renderIndex}-neuron-${i}`
+      currentNodeIds.push(nodeId)
+
+      nodes.push({
+        id: nodeId,
+        type: 'neuron',
+        position: {
+          x: renderIndex * HORIZONTAL_SPACING,
+          y: i * VERTICAL_SPACING - yOffset,
+        },
+        data: {
+          layerIndex: renderIndex,
+          totalNeurons: neuronCount,
+          sampledIndex: isOutputLayer
+            ? i
+            : Math.min(i * SAMPLE_FACTOR, neuronCount - 1),
+          isOutput: isOutputLayer,
+        },
+        draggable: false,
+        selectable: false,
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left,
+      })
+    }
+
+    for (const sourceId of previousNodeIds) {
+      for (const targetId of currentNodeIds) {
+        edges.push({
+          id: `edge-${sourceId}-${targetId}`,
+          source: sourceId,
+          target: targetId,
+          type: 'straight',
+          animated: false,
+          style: { stroke: '#93c5fd', strokeWidth: 1 },
+        })
+      }
+    }
+
+    previousNodeIds = currentNodeIds
+    renderIndex += 1
+  })
+
+  return { nodes, edges }
+}
+
+function DrawingGridNode({ data }: NodeProps<GridNodeData>) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const size = canvas.width
+    ctx.clearRect(0, 0, size, size)
+
+    ctx.fillStyle = '#f8fafc'
+    ctx.fillRect(0, 0, size, size)
+
+    if (!data.drawing) {
+      ctx.strokeStyle = '#93c5fd'
+      ctx.lineWidth = 2
+      ctx.strokeRect(0, 0, size, size)
+      return
+    }
+
+    const cellSize = size / MNIST_SIDE
+    const gap = Math.max(0.6, cellSize * 0.1)
+    const effectiveCell = cellSize - gap
+
+    for (let row = 0; row < MNIST_SIDE; row++) {
+      for (let col = 0; col < MNIST_SIDE; col++) {
+        const raw = data.drawing[row]?.[col] ?? 0
+        const clamped = Math.min(1, Math.max(0, raw))
+        const intensity = Math.round(clamped * 255)
+        ctx.fillStyle = `rgb(${intensity}, ${intensity}, ${intensity})`
+        ctx.fillRect(
+          col * cellSize + gap / 2,
+          row * cellSize + gap / 2,
+          effectiveCell,
+          effectiveCell
+        )
+      }
+    }
+
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)'
+    ctx.lineWidth = 0.5
+    for (let i = 0; i <= MNIST_SIDE; i++) {
+      const offset = i * cellSize
+      ctx.beginPath()
+      ctx.moveTo(offset, 0)
+      ctx.lineTo(offset, size)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(0, offset)
+      ctx.lineTo(size, offset)
+      ctx.stroke()
+    }
+
+    ctx.strokeStyle = '#3b82f6'
+    ctx.lineWidth = 2
+    ctx.strokeRect(0, 0, size, size)
+  }, [data.drawing])
+
   return (
-    <div className="h-[500px] w-full rounded-lg border border-gray-200">
+    <div className="rounded-xl border border-blue-200 bg-white p-3 shadow-sm">
+      <canvas
+        ref={canvasRef}
+        width={168}
+        height={168}
+        className="h-44 w-44 rounded-md border border-blue-100"
+      />
+      <Handle type="source" position={Position.Right} className="!bg-blue-400" />
+    </div>
+  )
+}
+
+function NeuronNode({ data }: NodeProps<NeuronNodeData>) {
+  return (
+    <div className="relative flex h-12 w-12 items-center justify-center rounded-full border-2 border-blue-200 bg-blue-50 shadow-sm">
+      {!data.isOutput && (
+        <Handle
+          type="source"
+          position={Position.Right}
+          className="!h-2.5 !w-2.5 !border-0 !bg-blue-300"
+        />
+      )}
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!h-2.5 !w-2.5 !border-0 !bg-blue-300"
+      />
+    </div>
+  )
+}
+
+const nodeTypes: NodeTypes = {
+  drawingGrid: DrawingGridNode,
+  neuron: NeuronNode,
+}
+
+export function NetworkVisualization({
+  layers,
+  currentDrawing,
+}: NetworkVisualizationProps) {
+  const drawingMatrix = useMemo(() => clampedMatrix(currentDrawing), [currentDrawing])
+
+  const { nodes, edges } = useMemo(
+    () => buildNodesAndEdges(layers, drawingMatrix),
+    [layers, drawingMatrix]
+  )
+
+  return (
+    <div className="relative h-[460px] w-full rounded-lg border border-gray-200 bg-white">
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onInit={handleInit}
+        nodeTypes={nodeTypes}
         fitView
-        minZoom={0.01}
-        maxZoom={1.5}
+        fitViewOptions={{ padding: 0.25 }}
+        minZoom={0.2}
+        maxZoom={1.4}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         nodesDraggable={false}
         nodesConnectable={false}
-        elementsSelectable={false}
+        edgesFocusable={false}
+        edgesUpdatable={false}
+        panOnScroll
+        zoomOnScroll
+        zoomOnPinch
+        zoomOnDoubleClick={false}
+        proOptions={{ hideAttribution: true }}
       >
-        <Background />
+        <Background gap={20} color="#e5e7eb" />
         <Controls showInteractive={false} />
       </ReactFlow>
+
+      {nodes.length === 0 && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-500">
+          No layers available to visualize.
+        </div>
+      )}
     </div>
   )
 }
