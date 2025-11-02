@@ -36,6 +36,7 @@ def chat_with_assistant():
 
     # Get OpenAI API key from environment
     api_key = os.environ.get("OPENAI_API_KEY")
+    print(f"API Key: {api_key}")
     if not api_key:
         return error_response("OPENAI_API_KEY not configured.", status=500)
 

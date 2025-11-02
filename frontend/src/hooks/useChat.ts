@@ -54,7 +54,7 @@ export function useChat(): UseChatReturn {
       abortControllerRef.current = abortController
 
       try {
-        const response = await fetch('http://localhost:8080/api/chat', {
+        const response = await fetch('http://127.0.0.1:8080/api/chat', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
