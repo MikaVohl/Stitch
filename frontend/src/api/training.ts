@@ -50,7 +50,7 @@ export function subscribeToTrainingEvents(
       const data = JSON.parse(e.data) as TrainingState
       callbacks.onState(data)
 
-      if (data.state === 'succeeded' || data.state === 'failed') {
+      if (data.state === 'succeeded' || data.state === 'failed' || data.state === 'cancelled') {
         eventSource.close()
       }
     } catch (error) {
@@ -59,6 +59,9 @@ export function subscribeToTrainingEvents(
   })
 
   eventSource.onerror = () => {
+    if (eventSource.readyState === EventSource.CLOSED) {
+      return
+    }
     callbacks.onError(new Error('Event stream connection error'))
     eventSource.close()
   }
@@ -66,5 +69,19 @@ export function subscribeToTrainingEvents(
   // Return cleanup function
   return () => {
     eventSource.close()
+  }
+}
+
+export async function cancelTraining(runId: string): Promise<void> {
+  const response = await fetch(`/api/train/${runId}/cancel`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to cancel training' }))
+    throw new TrainingError(error.error || 'Failed to cancel training')
   }
 }

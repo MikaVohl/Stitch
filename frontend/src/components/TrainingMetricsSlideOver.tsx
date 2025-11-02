@@ -26,9 +26,12 @@ interface TrainingMetricsSlideOverProps {
   onOpenChange: (open: boolean) => void
   isTraining: boolean
   metrics: MetricData[]
-  currentState: 'queued' | 'running' | 'succeeded' | 'failed' | null
+  currentState: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled' | null
   runId?: string
   samplePredictions?: MnistSample[]
+  onCancel?: () => void
+  canCancel?: boolean
+  isCancelling?: boolean
 }
 
 function formatTime(seconds: number): string {
@@ -46,6 +49,9 @@ export const TrainingMetricsSlideOver: FC<TrainingMetricsSlideOverProps> = ({
   currentState,
   runId,
   samplePredictions = [],
+  onCancel,
+  canCancel = false,
+  isCancelling = false,
 }) => {
   const latestMetric = metrics.length > 0 ? metrics[metrics.length - 1] : null
   const [modelName, setModelName] = useState('')
@@ -112,6 +118,8 @@ export const TrainingMetricsSlideOver: FC<TrainingMetricsSlideOverProps> = ({
       setIsSaving(false)
     }
   }
+
+  const showCancelButton = Boolean(onCancel) && canCancel
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -195,7 +203,9 @@ export const TrainingMetricsSlideOver: FC<TrainingMetricsSlideOverProps> = ({
                     ? 'text-green-600'
                     : currentState === 'failed'
                       ? 'text-red-600'
-                      : 'text-gray-600'
+                      : currentState === 'cancelled'
+                        ? 'text-gray-600'
+                        : 'text-gray-600'
                   }`}
               >
                 {currentState === 'running'
@@ -204,14 +214,25 @@ export const TrainingMetricsSlideOver: FC<TrainingMetricsSlideOverProps> = ({
                     ? 'Completed'
                     : currentState === 'failed'
                       ? 'Failed'
-                      : currentState === 'queued'
-                        ? 'Queued'
-                        : 'Idle'}
+                      : currentState === 'cancelled'
+                        ? 'Cancelled'
+                        : currentState === 'queued'
+                          ? 'Queued'
+                          : 'Idle'}
               </span>
-          </div>
+            </div>
+            {showCancelButton && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onCancel}
+                disabled={isCancelling}
+              >
+                {isCancelling ? 'Cancelling...' : 'Cancel training'}
+              </Button>
+            )}
           </div>
 
-          {/* Sample Predictions */}
           {hasSamplePredictions && (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-gray-700">Sample Predictions</h3>

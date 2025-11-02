@@ -19,7 +19,7 @@ export interface MnistSample {
 }
 
 export interface TrainingState {
-  state: 'queued' | 'running' | 'succeeded' | 'failed'
+  state: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
   error?: string
   test_accuracy?: number
   sample_predictions?: MnistSample[]

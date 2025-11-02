@@ -31,21 +31,19 @@ export function DenseLayerNode({ id }: NodeProps) {
       >
         ×
       </button>
-      {/* Input handle */}
+
       <Handle
         type="target"
         position={Position.Left}
-        className="!bg-blue-500 !w-3 !h-3 !border-2 !border-white"
+        id="input"
+        className="bg-indigo-500! size-5! border-2! border-white!"
       />
 
-      {/* Header */}
       <div className="bg-blue-500 text-white px-3 py-1.5 rounded-t-md text-sm font-semibold">
         Dense Layer
       </div>
 
-      {/* Body */}
       <div className="p-3 space-y-2">
-        {/* Units input */}
         <div className="flex items-center gap-2">
           <label className="text-xs font-medium text-gray-700">Units:</label>
           <input
@@ -58,7 +56,6 @@ export function DenseLayerNode({ id }: NodeProps) {
           />
         </div>
 
-        {/* Activation chip */}
         <div className="flex items-center gap-2">
           <label className="text-xs font-medium text-gray-700">Activation:</label>
           <select
@@ -86,11 +83,11 @@ export function DenseLayerNode({ id }: NodeProps) {
         )}
       </div>
 
-      {/* Output handle */}
       <Handle
         type="source"
         position={Position.Right}
-        className="!bg-blue-500 !w-3 !h-3 !border-2 !border-white"
+        id="output"
+        className="bg-indigo-500! size-5! border-2! border-white!"
       />
     </div>
   )

@@ -31,7 +31,8 @@ export function PoolingLayerNode({ id }: NodeProps) {
       <Handle
         type="target"
         position={Position.Left}
-        className="!bg-purple-500 !w-3 !h-3 !border-2 !border-white"
+        id="input"
+        className="bg-indigo-500! size-5! border-2! border-white!"
       />
 
       <div className="bg-purple-500 text-white px-3 py-1.5 rounded-t-md text-sm font-semibold">
@@ -80,7 +81,8 @@ export function PoolingLayerNode({ id }: NodeProps) {
       <Handle
         type="source"
         position={Position.Right}
-        className="!bg-purple-500 !w-3 !h-3 !border-2 !border-white"
+        id="output"
+        className="bg-indigo-500! size-5! border-2! border-white!"
       />
     </div>
   )

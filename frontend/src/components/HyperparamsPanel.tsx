@@ -1,5 +1,11 @@
 import { useState } from 'react'
 import clsx from 'clsx'
+import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface Hyperparams {
   epochs: number
@@ -56,7 +62,7 @@ export function HyperparamsPanel({
   return (
     <div
       className={clsx(
-        'bg-white rounded-lg shadow-lg border border-gray-200 w-[200px] md:w-[280px]',
+        'bg-white rounded-lg shadow-lg border border-gray-200 w-[200px] md:w-[280px] pointer-events-auto',
         className
       )}
     >
@@ -82,20 +88,29 @@ export function HyperparamsPanel({
       {/* Dropdown (Collapsible Content) */}
       {isOpen && (
         <div className="p-4 space-y-3">
+
           {/* Epochs */}
           <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-gray-600">Epochs</label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  
+                  className="h-auto p-0 text-xs font-medium text-gray-600 hover:text-blue-600 cursor-pointer"
+                >
+                  Epochs
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p>Number of complete passes through the training dataset.</p>
+              </TooltipContent>
+            </Tooltip>
+
             <input
               type="number"
               value={params.epochs ?? ''}
               onChange={(e) => {
                 const val = e.target.value
-                // allow empty string
-                if (val === '') {
-                  updateParam('epochs', '' as any) // temporarily store empty
-                } else {
-                  updateParam('epochs', parseInt(val))
-                }
+                updateParam('epochs', val === '' ? ('' as any) : parseInt(val))
               }}
               className="w-20 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               min="1"
@@ -104,17 +119,26 @@ export function HyperparamsPanel({
 
           {/* Batch Size */}
           <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-gray-600">Batch Size</label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  
+                  className="h-auto p-0 text-xs font-medium text-gray-600 hover:text-blue-600 cursor-pointer"
+                >
+                  Batch Size
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p>Number of samples processed before the model updates weights.</p>
+              </TooltipContent>
+            </Tooltip>
+
             <input
               type="number"
               value={params.batch_size ?? ''}
               onChange={(e) => {
                 const val = e.target.value
-                if (val === '') {
-                  updateParam('batch_size', '' as any)
-                } else {
-                  updateParam('batch_size', parseInt(val))
-                }
+                updateParam('batch_size', val === '' ? ('' as any) : parseInt(val))
               }}
               className="w-20 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               min="1"
@@ -123,11 +147,24 @@ export function HyperparamsPanel({
 
           {/* Optimizer */}
           <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-gray-600">Optimizer</label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                
+                  className="h-auto p-0 text-xs font-medium text-gray-600 hover:text-blue-600 cursor-pointer"
+                >
+                  Optimizer
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p>Algorithm used to update model weights during training.</p>
+              </TooltipContent>
+            </Tooltip>
+
             <select
               value={params.optimizer.type}
               onChange={(e) => updateOptimizer('type', e.target.value)}
-              className="w-20 px-1 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-20 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="sgd">SGD</option>
               <option value="adam">Adam</option>
@@ -137,17 +174,26 @@ export function HyperparamsPanel({
 
           {/* Learning Rate */}
           <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-gray-600">Learning Rate</label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  
+                  className="h-auto p-0 text-xs font-medium text-gray-600 hover:text-blue-600 cursor-pointer"
+                >
+                  Learning Rate
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p>Controls how much to adjust model weights per update.</p>
+              </TooltipContent>
+            </Tooltip>
+
             <input
               type="number"
               value={params.optimizer.lr ?? ''}
               onChange={(e) => {
                 const val = e.target.value
-                if (val === '') {
-                  updateOptimizer('lr', '' as any)
-                } else {
-                  updateOptimizer('lr', parseFloat(val))
-                }
+                updateOptimizer('lr', val === '' ? ('' as any) : parseFloat(val))
               }}
               className="w-20 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               step="0.001"
@@ -157,17 +203,26 @@ export function HyperparamsPanel({
 
           {/* Momentum */}
           <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-gray-600">Momentum</label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  
+                  className="h-auto p-0 text-xs font-medium text-gray-600 hover:text-blue-600 cursor-pointer"
+                >
+                  Momentum
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p>Helps accelerate gradients and smooth convergence.</p>
+              </TooltipContent>
+            </Tooltip>
+
             <input
               type="number"
               value={params.optimizer.momentum ?? ''}
               onChange={(e) => {
                 const val = e.target.value
-                if (val === '') {
-                  updateOptimizer('momentum', '' as any)
-                } else {
-                  updateOptimizer('momentum', parseFloat(val))
-                }
+                updateOptimizer('momentum', val === '' ? ('' as any) : parseFloat(val))
               }}
               className="w-20 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               step="0.1"
@@ -178,17 +233,26 @@ export function HyperparamsPanel({
 
           {/* Seed */}
           <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-gray-600">Seed</label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  
+                  className="h-auto p-0 text-xs font-medium text-gray-600 hover:text-blue-600 cursor-pointer" 
+                >
+                  Seed
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p>Sets the random seed for reproducible training runs.</p>
+              </TooltipContent>
+            </Tooltip>
+
             <input
               type="number"
               value={params.seed ?? ''}
               onChange={(e) => {
                 const val = e.target.value
-                if (val === '') {
-                  updateParam('seed', '' as any)
-                } else {
-                  updateParam('seed', parseInt(val))
-                }
+                updateParam('seed', val === '' ? ('' as any) : parseInt(val))
               }}
               className="w-20 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -196,17 +260,26 @@ export function HyperparamsPanel({
 
           {/* Train Split */}
           <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-gray-600">Train Split</label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  
+                  className="h-auto p-0 text-xs font-medium text-gray-600 hover:text-blue-600 cursor-pointer"
+                >
+                  Train Split
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p>Proportion of data used for training vs validation.</p>
+              </TooltipContent>
+            </Tooltip>
+
             <input
               type="number"
               value={params.train_split ?? ''}
               onChange={(e) => {
                 const val = e.target.value
-                if (val === '') {
-                  updateParam('train_split', '' as any)
-                } else {
-                  updateParam('train_split', parseFloat(val))
-                }
+                updateParam('train_split', val === '' ? ('' as any) : parseFloat(val))
               }}
               className="w-20 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               step="0.1"
@@ -215,10 +288,22 @@ export function HyperparamsPanel({
             />
           </div>
 
-
           {/* Shuffle */}
           <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-gray-600">Shuffle</label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  
+                  className="h-auto p-0 text-xs font-medium text-gray-600 hover:text-blue-600 cursor-pointer"
+                >
+                  Shuffle
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p>Whether to shuffle data at the start of each epoch.</p>
+              </TooltipContent>
+            </Tooltip>
+
             <input
               type="checkbox"
               checked={params.shuffle}
@@ -226,6 +311,7 @@ export function HyperparamsPanel({
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
         </div>
       )}
     </div>

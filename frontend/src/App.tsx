@@ -18,29 +18,29 @@ export default function App() {
           <header className="h-16 border-b border-gray-200 bg-white shadow-sm">
             <div className="h-full grid grid-cols-3 max-w-7xl mx-auto px-4 flex gap-8">
               <h1 className="text-xl flex items-center gap-2 font-bold text-gray-900"><img src="/Group 9.svg" alt="" className="h-4 w-14" />NETBURGER™</h1>
-              <nav className="flex gap-4 text-sm justify-center font-medium">
+                <nav className="flex gap-4 text-sm justify-center font-medium">
                 <NavLink
                   to="/playground"
-                  className="flex items-center gap-2"
+                  className="group flex items-center gap-2 hover:text-gray-600 transition-colors"
                 >
-                  <img src="/build.svg" alt="" className="h-4 w-4 transition-transform hover:-rotate-45" />
+                  <img src="/build.svg" alt="" className="h-4 w-4 transition-all group-hover:-rotate-45 group-hover:opacity-60" />
                   Build
                 </NavLink>
                 <NavLink
                   to="/models"
-                  className="flex items-center gap-2"
+                  className="group flex items-center gap-2 hover:text-gray-600 transition-colors"
                 >
-                  <img src="/models.svg" alt="" className="h-4 w-4 transition-transform hover:-translate-y-1" />
+                  <img src="/models.svg" alt="" className="h-4 w-4 transition-all group-hover:-translate-y-1 group-hover:opacity-60" />
                   Models
                 </NavLink>
                 <NavLink
                   to="/test"
-                  className="flex items-center gap-2"
+                  className="group flex items-center gap-2 hover:text-gray-600 transition-colors"
                 >
-                  <img src="/test.svg" alt="" className="h-4 w-4 transition-transform hover:translate-x-1 hover:-translate-y-1" />
+                  <img src="/test.svg" alt="" className="h-4 w-4 transition-all group-hover:translate-x-1 group-hover:-translate-y-1 group-hover:opacity-60" />
                   Test
                 </NavLink>
-              </nav>
+                </nav>
             </div>
           </header>
 

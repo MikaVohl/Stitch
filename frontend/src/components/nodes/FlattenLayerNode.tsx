@@ -11,7 +11,7 @@ export function FlattenLayerNode({ id }: NodeProps) {
   if (!layer) return null
 
   return (
-    <div className="relative bg-yellow-50 border-2 border-yellow-500 rounded-lg shadow-lg min-w-[160px]">
+    <div className="relative bg-yellow-50 border-2 border-yellow-500 rounded-lg shadow-lg min-w-40">
       <button
         type="button"
         onClick={() => removeLayer(id)}
@@ -24,7 +24,8 @@ export function FlattenLayerNode({ id }: NodeProps) {
       <Handle
         type="target"
         position={Position.Left}
-        className="!bg-yellow-500 !w-3 !h-3 !border-2 !border-white"
+        id="input"
+        className="bg-indigo-500! size-5! border-2! border-white!"
       />
 
       <div className="bg-yellow-500 text-white px-3 py-1.5 rounded-t-md text-sm font-semibold">
@@ -43,7 +44,8 @@ export function FlattenLayerNode({ id }: NodeProps) {
       <Handle
         type="source"
         position={Position.Right}
-        className="!bg-yellow-500 !w-3 !h-3 !border-2 !border-white"
+        id="output"
+        className="bg-indigo-500! size-5! border-2! border-white!"
       />
     </div>
   )

@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { startTraining, subscribeToTrainingEvents } from '@/api/training'
+import { startTraining, subscribeToTrainingEvents, cancelTraining } from '@/api/training'
 import type { TrainingRequest, MetricData, TrainingState, MnistSample } from '@/api/types'
 import { toast } from 'sonner'
 
@@ -24,6 +24,8 @@ interface UseTrainingMetricsReturn {
   samplePredictions: MnistSample[]
   startTraining: (request: TrainingRequest) => void
   resetMetrics: () => void
+  cancelTraining: () => Promise<void>
+  isCancelling: boolean
 }
 
 export function useTrainingMetrics(): UseTrainingMetricsReturn {
@@ -33,6 +35,7 @@ export function useTrainingMetrics(): UseTrainingMetricsReturn {
   const [runId, setRunId] = useState<string | undefined>(undefined)
   const [testAccuracy, setTestAccuracy] = useState<number | undefined>(undefined)
   const [samplePredictions, setSamplePredictions] = useState<MnistSample[]>([])
+  const [isCancelling, setIsCancelling] = useState(false)
   const eventSourceCleanupRef = useRef<(() => void) | null>(null)
 
   const startTrainingMutation = useStartTraining()
@@ -83,12 +86,30 @@ export function useTrainingMetrics(): UseTrainingMetricsReturn {
                     : undefined,
                 })
                 setIsTraining(false)
+                if (eventSourceCleanupRef.current) {
+                  eventSourceCleanupRef.current()
+                  eventSourceCleanupRef.current = null
+                }
               } else if (stateData.state === 'failed') {
                 toast.error('Training failed', {
                   description: stateData.error || 'Unknown error',
                 })
                 setSamplePredictions([])
                 setIsTraining(false)
+                if (eventSourceCleanupRef.current) {
+                  eventSourceCleanupRef.current()
+                  eventSourceCleanupRef.current = null
+                }
+              } else if (stateData.state === 'cancelled') {
+                toast.info('Training cancelled', {
+                  description: 'Your training run has been stopped.',
+                })
+                setSamplePredictions([])
+                setIsTraining(false)
+                if (eventSourceCleanupRef.current) {
+                  eventSourceCleanupRef.current()
+                  eventSourceCleanupRef.current = null
+                }
               }
             },
             onError: (error) => {
@@ -97,6 +118,10 @@ export function useTrainingMetrics(): UseTrainingMetricsReturn {
                 description: error.message,
               })
               setIsTraining(false)
+              if (eventSourceCleanupRef.current) {
+                eventSourceCleanupRef.current()
+                eventSourceCleanupRef.current = null
+              }
             },
           })
 
@@ -109,6 +134,37 @@ export function useTrainingMetrics(): UseTrainingMetricsReturn {
     },
     [isTraining, resetMetrics, startTrainingMutation]
   )
+
+  const cancelActiveTraining = useCallback(async () => {
+    if (!runId) {
+      toast.info('No active training run to cancel')
+      return
+    }
+
+    if (!isTraining && currentState !== 'running' && currentState !== 'queued') {
+      toast.info('No active training run to cancel')
+      return
+    }
+
+    if (isCancelling) {
+      return
+    }
+
+    setIsCancelling(true)
+    try {
+      await cancelTraining(runId)
+      toast.info('Cancelling training...', {
+        description: 'Please wait while the current epoch finishes.',
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to cancel training'
+      toast.error('Failed to cancel training', {
+        description: message,
+      })
+    } finally {
+      setIsCancelling(false)
+    }
+  }, [runId, isTraining, currentState, isCancelling])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -128,5 +184,7 @@ export function useTrainingMetrics(): UseTrainingMetricsReturn {
     samplePredictions,
     startTraining: handleStartTraining,
     resetMetrics,
+    cancelTraining: cancelActiveTraining,
+    isCancelling,
   }
 }

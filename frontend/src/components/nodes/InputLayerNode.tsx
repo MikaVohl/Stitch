@@ -9,13 +9,11 @@ export function InputLayerNode({ id }: NodeProps) {
   if (!layer) return null
 
   return (
-    <div className="bg-red-50 border-2 border-red-500 rounded-lg shadow-lg min-w-[160px]">
-      {/* Header */}
+    <div className="bg-red-50 border-2 border-red-500 rounded-lg shadow-lg min-w-40">
       <div className="bg-red-500 text-white px-3 py-1.5 rounded-t-md text-sm font-semibold">
         Input Layer
       </div>
 
-      {/* Body */}
       <div className="p-3 space-y-2">
         <div className="text-xs text-gray-600">
           <span className="font-medium">Size:</span> {layer.params.size}
@@ -26,12 +24,11 @@ export function InputLayerNode({ id }: NodeProps) {
         </div>
       </div>
 
-      {/* Output handle */}
       <Handle
         type="source"
         position={Position.Right}
-        className="!bg-red-500 !w-3 !h-3 !border-2 !border-white"
-        style={{ top: '50%', right: '-10px', transform: 'translateY(-50%)' }}
+        id="output"
+        className="bg-indigo-500! size-5! border-2! border-white!"
       />
     </div>
   )

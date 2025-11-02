@@ -35,7 +35,8 @@ export function ConvLayerNode({ id }: NodeProps) {
       <Handle
         type="target"
         position={Position.Left}
-        className="!bg-indigo-500 !w-3 !h-3 !border-2 !border-white"
+        id="input"
+        className="bg-indigo-500! size-5! border-2! border-white!"
       />
 
       <div className="bg-indigo-500 text-white px-3 py-1.5 rounded-t-md text-sm font-semibold">
@@ -67,7 +68,7 @@ export function ConvLayerNode({ id }: NodeProps) {
             min={1}
             className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
-            <span className="text-xs text-gray-500">× {layer.params.kernel}</span>
+          <span className="text-xs text-gray-500">× {layer.params.kernel}</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -103,9 +104,8 @@ export function ConvLayerNode({ id }: NodeProps) {
           <select
             value={layer.params.activation}
             onChange={(e) => updateLayerParams(id, { activation: e.target.value })}
-            className={`px-2 py-1 text-xs rounded border ${
-              activationColors[layer.params.activation] ?? activationColors.none
-            } font-medium`}
+            className={`px-2 py-1 text-xs rounded border ${activationColors[layer.params.activation] ?? activationColors.none
+              } font-medium`}
           >
             <option value="relu">ReLU</option>
             <option value="sigmoid">Sigmoid</option>
@@ -130,7 +130,8 @@ export function ConvLayerNode({ id }: NodeProps) {
       <Handle
         type="source"
         position={Position.Right}
-        className="!bg-indigo-500 !w-3 !h-3 !border-2 !border-white"
+        id="output"
+        className="bg-indigo-500! size-5! border-2! border-white!"
       />
     </div>
   )
