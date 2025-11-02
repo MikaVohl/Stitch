@@ -21,8 +21,11 @@ export const MetricsCharts: FC<MetricsChartsProps> = memo(({ metrics }) => {
 
   return (
     <>
+      {/* ---------- LOSS CHART ---------- */}
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-gray-700">Loss Over Time</h3>
+        <h3 className="text-sm font-semibold text-gray-700 text-center">
+          Loss Over Time
+        </h3>
         <div className="bg-gray-50 p-4 rounded-lg">
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={metrics}>
@@ -31,9 +34,24 @@ export const MetricsCharts: FC<MetricsChartsProps> = memo(({ metrics }) => {
                 dataKey="epoch"
                 label={{ value: 'Epoch', position: 'insideBottom', offset: -5 }}
               />
-              <YAxis label={{ value: 'Loss', angle: -90, position: 'insideLeft' }} />
+              <YAxis
+                label={{
+                  value: 'Loss',
+                  angle: -90,
+                  position: 'insideLeft',
+                  dy: 20,
+                  dx: -4.3 // slightly lower for spacing
+                }}
+              />
               <Tooltip />
-              <Legend />
+              <Legend
+                verticalAlign="bottom"
+                align="center"
+                wrapperStyle={{
+                  bottom: -7,
+                  left: 42,
+                }}
+              />
               <Line
                 type="monotone"
                 dataKey="train_loss"
@@ -57,8 +75,11 @@ export const MetricsCharts: FC<MetricsChartsProps> = memo(({ metrics }) => {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-gray-700">Accuracy Over Time</h3>
+      {/* ---------- ACCURACY CHART ---------- */}
+      <div className="space-y-2 mt-6">
+        <h3 className="text-sm font-semibold text-gray-700 text-center">
+          Accuracy Over Time
+        </h3>
         <div className="bg-gray-50 p-4 rounded-lg">
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={metrics}>
@@ -68,14 +89,25 @@ export const MetricsCharts: FC<MetricsChartsProps> = memo(({ metrics }) => {
                 label={{ value: 'Epoch', position: 'insideBottom', offset: -5 }}
               />
               <YAxis
-                label={{ value: 'Accuracy', angle: -90, position: 'insideLeft' }}
+                label={{
+                  value: 'Accuracy',
+                  angle: -90,
+                  position: 'insideLeft',
+                  dy: 34,
+                  dx: -4.3 // space tweak for consistency
+                }}
                 domain={[0, 1]}
                 tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
               />
-              <Tooltip
-                formatter={(value: number) => `${(value * 100).toFixed(2)}%`}
+              <Tooltip formatter={(value: number) => `${(value * 100).toFixed(2)}%`} />
+              <Legend
+                verticalAlign="bottom"
+                align="center"
+                wrapperStyle={{
+                  bottom: -7,
+                  left: 42,
+                }}
               />
-              <Legend />
               <Line
                 type="monotone"
                 dataKey="train_accuracy"
