@@ -203,15 +203,15 @@ export default function Playground() {
       type LayerTemplatePayload =
         | { kind: 'Dense'; params: { units: number; activation: ActivationType } }
         | {
-            kind: 'Convolution'
-            params: {
-              filters: number
-              kernel: number
-              stride: number
-              padding: 'valid' | 'same'
-              activation: Exclude<ActivationType, 'softmax'>
-            }
+          kind: 'Convolution'
+          params: {
+            filters: number
+            kernel: number
+            stride: number
+            padding: 'valid' | 'same'
+            activation: Exclude<ActivationType, 'softmax'>
           }
+        }
         | { kind: 'Flatten'; params: Record<string, never> }
         | { kind: 'Dropout'; params: { rate: number } }
 
@@ -403,7 +403,7 @@ export default function Playground() {
         <div className="absolute top-4 left-4 z-10 flex flex-col gap-4 pointer-events-none">
           <div className="flex flex-row gap-4 items-start">
             <HyperparamsPanel onParamsChange={setHyperparams} />
-            <PresetChips onPresetSelect={handlePresetSelect} currentPreset={currentPreset} />
+            <PresetChips onPresetSelect={handlePresetSelect} />
           </div>
           <LayersPanel />
         </div>

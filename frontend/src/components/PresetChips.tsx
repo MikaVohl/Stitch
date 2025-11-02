@@ -4,10 +4,9 @@ export type PresetType = 'blank' | 'simple' | 'complex'
 
 interface PresetChipsProps {
   onPresetSelect: (preset: PresetType) => void
-  currentPreset?: PresetType
 }
 
-export function PresetChips({ onPresetSelect, currentPreset }: PresetChipsProps) {
+export function PresetChips({ onPresetSelect }: PresetChipsProps) {
   const baseClasses =
     'px-3 py-1.5 text-xs font-medium rounded-full transition-colors cursor-pointer border backdrop-blur-sm'
 
@@ -17,9 +16,7 @@ export function PresetChips({ onPresetSelect, currentPreset }: PresetChipsProps)
       <button
         onClick={() => onPresetSelect('blank')}
         className={
-          currentPreset === 'blank'
-            ? `${baseClasses} bg-blue-600 text-white border-blue-600`
-            : `${baseClasses} bg-blue-50/80 text-blue-700 hover:bg-blue-100 border-blue-200/50`
+          `${baseClasses} bg-blue-50/80 text-blue-700 hover:bg-blue-100 border-blue-200/50`
         }
       >
         Blank
@@ -27,9 +24,7 @@ export function PresetChips({ onPresetSelect, currentPreset }: PresetChipsProps)
       <button
         onClick={() => onPresetSelect('simple')}
         className={
-          currentPreset === 'simple'
-            ? `${baseClasses} bg-blue-600 text-white border-blue-600`
-            : `${baseClasses} bg-blue-50/80 text-blue-700 hover:bg-blue-100 border-blue-200/50`
+          `${baseClasses} bg-blue-50/80 text-blue-700 hover:bg-blue-100 border-blue-200/50`
         }
       >
         Simple
@@ -37,9 +32,7 @@ export function PresetChips({ onPresetSelect, currentPreset }: PresetChipsProps)
       <button
         onClick={() => onPresetSelect('complex')}
         className={
-          currentPreset === 'complex'
-            ? `${baseClasses} bg-blue-600 text-white border-blue-600`
-            : `${baseClasses} bg-blue-50/80 text-blue-700 hover:bg-blue-100 border-blue-200/50`
+          `${baseClasses} bg-blue-50/80 text-blue-700 hover:bg-blue-100 border-blue-200/50`
         }
       >
         Complex
