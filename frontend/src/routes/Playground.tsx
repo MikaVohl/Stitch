@@ -393,7 +393,7 @@ export default function Playground() {
   return (
     <>
       <div style={{ width: '100vw', height: 'calc(100vh - 4rem)', position: 'relative' }}>
-        <div className="absolute top-4 left-4 z-10 flex flex-col gap-4">
+        <div className="absolute top-4 left-4 z-10 flex flex-col gap-4 pointer-events-none">
           <div className="flex flex-row gap-4 items-start">
             <HyperparamsPanel onParamsChange={setHyperparams} />
             <PresetChips onPresetSelect={handlePresetSelect} />

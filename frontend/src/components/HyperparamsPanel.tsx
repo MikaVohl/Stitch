@@ -62,7 +62,7 @@ export function HyperparamsPanel({
   return (
     <div
       className={clsx(
-        'bg-white rounded-lg shadow-lg border border-gray-200 w-[200px] md:w-[280px]',
+        'bg-white rounded-lg shadow-lg border border-gray-200 w-[200px] md:w-[280px] pointer-events-auto',
         className
       )}
     >

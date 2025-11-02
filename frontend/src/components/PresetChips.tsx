@@ -11,7 +11,7 @@ export function PresetChips({ onPresetSelect }: PresetChipsProps) {
   const chipClasses = 'px-3 py-1.5 text-xs font-medium rounded-full transition-colors cursor-pointer bg-blue-50/80 text-blue-700 hover:bg-blue-100 backdrop-blur-sm border border-blue-200/50'
 
   return (
-    <div className="px-3 py-2 flex gap-2 items-center">
+    <div className="px-3 py-2 flex gap-2 items-center pointer-events-auto">
       <span className="text-xs font-semibold text-gray-600">Preset:</span>
       <button
         onClick={() => onPresetSelect('blank')}

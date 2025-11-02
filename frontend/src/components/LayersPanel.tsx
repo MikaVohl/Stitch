@@ -155,7 +155,7 @@ export function LayersPanel({ className }: { className?: string }) {
   const [isOpen, setIsOpen] = useState(true)
 
   return (
-    <div className={clsx('bg-white rounded-lg shadow-lg border border-gray-200 w-[200px] md:w-[280px]', className)}>
+    <div className={clsx('bg-white rounded-lg shadow-lg border border-gray-200 w-[200px] md:w-[280px] pointer-events-auto', className)}>
       {/* Header with rotating arrow */}
       <button
         onClick={() => setIsOpen(!isOpen)}
