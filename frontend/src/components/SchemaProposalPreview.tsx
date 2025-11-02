@@ -261,8 +261,8 @@ export function SchemaProposalPreview({
   }, [currentEdges, proposedEdges])
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-30 z-50 flex items-center justify-center p-8">
-      <div className="bg-white rounded-xl shadow-2xl w-full h-full max-w-7xl flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-6 sm:p-10">
+      <div className="bg-white rounded-2xl shadow-2xl w-full h-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
         {/* Header */}
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-2xl font-bold text-gray-900">Architecture Proposal</h2>
@@ -296,7 +296,7 @@ export function SchemaProposalPreview({
             <div className="p-4 bg-gray-50 border-b border-gray-200">
               <h3 className="font-semibold text-gray-900">Current Architecture</h3>
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-h-[24rem]">
               <ReactFlow
                 nodes={currentNodes}
                 edges={currentReactFlowEdges}
@@ -317,7 +317,7 @@ export function SchemaProposalPreview({
             <div className="p-4 bg-blue-50 border-b border-blue-200">
               <h3 className="font-semibold text-blue-900">Proposed Architecture</h3>
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-h-[24rem]">
               <ReactFlow
                 nodes={proposedNodes}
                 edges={proposedReactFlowEdges}
