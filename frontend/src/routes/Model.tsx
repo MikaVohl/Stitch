@@ -1,8 +1,6 @@
 import { useModel, type TrainingRun } from "@/hooks/useModels";
 import { useParams } from "react-router-dom"
-import { summarizeArchitecture } from "./Models";
-import { MetricsCharts } from "@/components/MetricsCharts";
-import { HyperparamsTable } from "@/components/HyperparamsTable";
+import { summarizeArchitecture, summarizeHyperparams } from "./Models";
 
 export default function ModelPage() {
   const { id } = useParams();
@@ -46,7 +44,9 @@ export default function ModelPage() {
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 mb-2">Hyperparameters</h3>
-            <HyperparamsTable hyperparams={model.hyperparams} />
+            <div className="text-gray-600 text-xs bg-gray-50 p-3 rounded">
+              {summarizeHyperparams(model.hyperparams)}
+            </div>
           </div>
         </div>
       </div>
@@ -142,11 +142,81 @@ function MetricsVisualization({ runs }: { runs: TrainingRun[] }) {
   }
 
   const metrics = latestRun.metrics;
+  const maxEpoch = metrics.length;
+  const maxLoss = Math.max(...metrics.map(m => Math.max(m.train_loss, m.val_loss)));
 
   return (
     <div className="space-y-6">
-      {/* Charts */}
-      <MetricsCharts metrics={metrics} />
+      <div>
+        <h4 className="text-sm font-medium text-gray-900 mb-2">Loss Over Time</h4>
+        <div className="relative h-48 border border-gray-200 rounded-lg p-4 bg-gray-50">
+          <svg className="w-full h-full" viewBox="0 0 400 160" preserveAspectRatio="none">
+            <polyline
+              fill="none"
+              stroke="#3b82f6"
+              strokeWidth="2"
+              points={metrics.map((m, i) =>
+                `${(i / maxEpoch) * 400},${160 - (m.train_loss / maxLoss) * 160}`
+              ).join(' ')}
+            />
+            <polyline
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="2"
+              points={metrics.map((m, i) =>
+                `${(i / maxEpoch) * 400},${160 - (m.val_loss / maxLoss) * 160}`
+              ).join(' ')}
+            />
+          </svg>
+          <div className="absolute top-2 right-2 flex gap-4 text-xs">
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 bg-blue-500 rounded"></div>
+              <span>Train Loss</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 bg-red-500 rounded"></div>
+              <span>Val Loss</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Accuracy Chart */}
+      <div>
+        <h4 className="text-sm font-medium text-gray-900 mb-2">Accuracy Over Time</h4>
+        <div className="relative h-48 border border-gray-200 rounded-lg p-4 bg-gray-50">
+          <svg className="w-full h-full" viewBox="0 0 400 160" preserveAspectRatio="none">
+            {/* Train Accuracy Line */}
+            <polyline
+              fill="none"
+              stroke="#3b82f6"
+              strokeWidth="2"
+              points={metrics.map((m, i) =>
+                `${(i / maxEpoch) * 400},${160 - m.train_accuracy * 160}`
+              ).join(' ')}
+            />
+            {/* Val Accuracy Line */}
+            <polyline
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="2"
+              points={metrics.map((m, i) =>
+                `${(i / maxEpoch) * 400},${160 - m.val_accuracy * 160}`
+              ).join(' ')}
+            />
+          </svg>
+          <div className="absolute top-2 right-2 flex gap-4 text-xs">
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 bg-blue-500 rounded"></div>
+              <span>Train Acc</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 bg-red-500 rounded"></div>
+              <span>Val Acc</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Metrics Table */}
       <div>

@@ -463,7 +463,7 @@ export default function Playground() {
                 : 'bg-red-500 hover:bg-red-600 cursor-pointer'
               : isTraining
                 ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-green-500 hover:bg-green-600 cursor-pointer'
+                : 'bg-green-600 hover:bg-green-700 cursor-pointer'
               } text-white font-semibold px-6 py-2.5 rounded-lg shadow-lg transition-colors flex items-center gap-2`}
           >
             {canCancelTraining ? (

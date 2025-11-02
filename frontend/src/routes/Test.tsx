@@ -162,7 +162,7 @@ export default function Test() {
                   ) : (
                     <>
                       <span>Run inference</span>
-                      <span aria-hidden className="text-xs text-blue-200">⌘⏎</span>
+                      <span aria-hidden className="text-xs text-blue-200"></span>
                     </>
                   )}
                 </button>

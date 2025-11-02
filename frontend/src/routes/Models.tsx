@@ -1,6 +1,5 @@
 import { useModels, type StoredLayer } from '@/hooks/useModels';
 import { Link } from 'react-router-dom';
-import { HyperparamsTable } from '@/components/HyperparamsTable';
 
 export function summarizeArchitecture(layers?: StoredLayer[]): string {
   if (!layers || layers.length === 0) return 'No layers recorded.'
@@ -16,6 +15,24 @@ export function summarizeArchitecture(layers?: StoredLayer[]): string {
     .join('  •  ')
 }
 
+export function summarizeHyperparams(hyperparams?: Record<string, unknown>): string {
+  if (!hyperparams || Object.keys(hyperparams).length === 0) {
+    return 'No hyperparameters recorded.'
+  }
+
+  const parts: string[] = []
+  const entries = Object.entries(hyperparams)
+
+  for (const [key, value] of entries) {
+    if (typeof value === 'object' && value !== null) {
+      parts.push(`${key}: ${JSON.stringify(value)}`)
+    } else {
+      parts.push(`${key}: ${String(value)}`)
+    }
+  }
+
+  return parts.join('  •  ')
+}
 
 export default function Models() {
   const { data: models, isLoading, isError, error } = useModels();
@@ -73,51 +90,52 @@ export default function Models() {
 
           <div className="grid gap-6 lg:grid-cols-2">
             {models?.map((model) => (
-              <article
-                key={model.model_id}
-                className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-transform hover:-translate-y-1 hover:shadow-lg"
-              >
-                <header className="flex items-start justify-between">
-                  <div>
-                    <Link to={`./${model.model_id}`} className="text-lg font-semibold text-gray-900">{model.name}</Link>
-                    <p className="mt-1 text-sm text-gray-500">
-                      {model.created_at
-                        ? new Date(model.created_at).toLocaleString()
-                        : 'Creation time unknown'}
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                    {model.architecture?.layers?.length ?? 0} layers
-                  </span>
-                </header>
+              <Link to={`./${model.model_id}`} key={model.model_id} className="block">
+                <article
+                  className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-transform hover:-translate-y-1 hover:shadow-lg"
+                >
+                  <header className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">{model.name}</h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {model.created_at
+                          ? new Date(model.created_at).toLocaleString()
+                          : 'Creation time unknown'}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                      {model.architecture?.layers?.length ?? 0} layers
+                    </span>
+                  </header>
 
-                <dl className="mt-4 space-y-3 text-sm text-gray-600">
-                  <div className="flex gap-2">
-                    <dt className="w-32 font-medium text-gray-900">Input size</dt>
-                    <dd>{model.architecture?.input_size ?? '—'}</dd>
-                  </div>
-                  <div className="flex gap-2">
-                    <dt className="w-32 font-medium text-gray-900">Highest accuracy</dt>
-                    <dd>
-                      {model.highest_accuracy != null
-                        ? `${(model.highest_accuracy * 100).toFixed(1)}%`
-                        : '—'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="font-medium text-gray-900">Architecture</dt>
-                    <dd className="mt-1 rounded-lg bg-gray-50 p-3 text-xs font-mono text-gray-700">
-                      {summarizeArchitecture(model.architecture?.layers)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="font-medium text-gray-900 mb-2">Hyperparameters</dt>
-                    <dd>
-                      <HyperparamsTable hyperparams={model.hyperparams} />
-                    </dd>
-                  </div>
-                </dl>
-              </article>
+                  <dl className="mt-4 space-y-3 text-sm text-gray-600">
+                    <div className="flex gap-2">
+                      <dt className="w-32 font-medium text-gray-900">Input size</dt>
+                      <dd>{model.architecture?.input_size ?? '—'}</dd>
+                    </div>
+                    <div className="flex gap-2">
+                      <dt className="w-32 font-medium text-gray-900">Highest accuracy</dt>
+                      <dd>
+                        {model.highest_accuracy != null
+                          ? `${(model.highest_accuracy * 100).toFixed(1)}%`
+                          : '—'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-gray-900">Architecture</dt>
+                      <dd className="mt-1 rounded-lg bg-gray-50 p-3 text-xs font-mono text-gray-700">
+                        {summarizeArchitecture(model.architecture?.layers)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-gray-900">Hyperparameters</dt>
+                      <dd className="mt-1 rounded-lg bg-gray-50 p-3 text-xs text-gray-700">
+                        {summarizeHyperparams(model.hyperparams)}
+                      </dd>
+                    </div>
+                  </dl>
+                </article>
+              </Link>
             ))}
           </div>
         </div>

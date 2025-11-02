@@ -9,7 +9,7 @@ export function OutputLayerNode({ id }: NodeProps) {
   if (!layer) return null;
 
   return (
-    <div className="bg-green-50 border-2 border-green-500 rounded-lg shadow-lg min-w-40">
+    <div className="bg-green-50 border-2 border-green-600 rounded-lg shadow-lg min-w-40">
       <Handle
         type="target"
         position={Position.Left}
@@ -17,7 +17,7 @@ export function OutputLayerNode({ id }: NodeProps) {
         className="bg-indigo-500! size-5! border-2! border-white!"
       />
 
-      <div className="bg-green-500 text-white px-3 py-1.5 rounded-t-md text-sm font-semibold">
+      <div className="bg-green-600 text-white px-3 py-1.5 rounded-t-md text-sm font-semibold">
         Output Layer
       </div>
 
