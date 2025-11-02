@@ -18,11 +18,11 @@ export function PoolingLayerNode({ id }: NodeProps) {
   }
 
   return (
-    <div className="relative bg-purple-50 border-2 border-purple-500 rounded-lg shadow-lg min-w-[190px]">
+    <div className="relative bg-emerald-50 border-2 border-emerald-500 rounded-lg shadow-lg min-w-[190px]">
       <button
         type="button"
         onClick={() => removeLayer(id)}
-        className="absolute -right-2 -top-2 w-6 h-6 flex items-center justify-center rounded-full bg-purple-500 text-white text-xs font-bold shadow-md hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-300"
+        className="absolute -right-2 -top-2 w-6 h-6 flex items-center justify-center rounded-full bg-emerald-500 text-white text-xs font-bold shadow-md hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-300"
         aria-label="Remove pooling layer"
       >
         ×
@@ -32,10 +32,10 @@ export function PoolingLayerNode({ id }: NodeProps) {
         type="target"
         position={Position.Left}
         id="input"
-        className="bg-indigo-500! size-5! border-2! border-white!"
+        className="![background-color:#10b981] !w-3 !h-3 !border-2 !border-white"
       />
 
-      <div className="bg-purple-500 text-white px-3 py-1.5 rounded-t-md text-sm font-semibold">
+      <div className="bg-emerald-500 text-white px-3 py-1.5 rounded-t-md text-sm font-semibold">
         Max Pooling
       </div>
 
@@ -47,7 +47,7 @@ export function PoolingLayerNode({ id }: NodeProps) {
             min={1}
             value={layer.params.pool_size}
             onChange={handleNumberChange('pool_size')}
-            className="w-14 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-14 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
 
@@ -58,7 +58,7 @@ export function PoolingLayerNode({ id }: NodeProps) {
             min={1}
             value={layer.params.stride}
             onChange={handleNumberChange('stride')}
-            className="w-14 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-14 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
 
@@ -69,7 +69,7 @@ export function PoolingLayerNode({ id }: NodeProps) {
             min={0}
             value={layer.params.padding}
             onChange={handleNumberChange('padding')}
-            className="w-14 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-14 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
 
@@ -82,7 +82,7 @@ export function PoolingLayerNode({ id }: NodeProps) {
         type="source"
         position={Position.Right}
         id="output"
-        className="bg-indigo-500! size-5! border-2! border-white!"
+        className="![background-color:#10b981] !w-3 !h-3 !border-2 !border-white"
       />
     </div>
   )

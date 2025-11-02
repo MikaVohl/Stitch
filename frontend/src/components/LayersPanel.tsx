@@ -43,7 +43,20 @@ type DropoutTemplate = {
   params: { rate: number }
   docsUrl: string
 }
-type LayerTemplate = DenseTemplate | ConvTemplate | FlattenTemplate | DropoutTemplate
+type PoolingTemplate = {
+  id: string
+  label: string
+  description: string
+  kind: 'Pooling'
+  params: {
+    type: 'max'
+    pool_size: number
+    stride: number
+    padding: number
+  }
+}
+
+type LayerTemplate = DenseTemplate | ConvTemplate | FlattenTemplate | DropoutTemplate | PoolingTemplate
 
 // --- Styles ---
 const TEMPLATE_STYLES: Record<
@@ -94,6 +107,15 @@ const TEMPLATE_STYLES: Record<
     icon: 'text-orange-600',
     iconHover: 'hover:text-orange-800',
   },
+  Pooling: {
+    border: 'border-emerald-300',
+    background: 'bg-emerald-50',
+    hover: 'hover:bg-emerald-100',
+    label: 'text-emerald-700',
+    description: 'text-emerald-600',
+    icon: 'text-emerald-600',
+    iconHover: 'hover:text-emerald-800',
+  },
 }
 
 // --- Templates ---
@@ -130,7 +152,101 @@ const LAYER_TEMPLATES: LayerTemplate[] = [
     params: { rate: 0.2 },
     docsUrl: 'https://keras.io/api/layers/regularization_layers/dropout/'
   },
+  {
+    id: 'maxpool-layer',
+    label: 'Max Pooling',
+    description: 'Downsamples feature maps by taking the maximum value in each window.',
+    kind: 'Pooling',
+    params: { type: 'max', pool_size: 2, stride: 2, padding: 0 },
+  },
 ]
+
+// --- Tooltip content generator ---
+function getTooltipContent(template: LayerTemplate) {
+  switch (template.kind) {
+    case 'Dense':
+      return (
+        <div className="max-w-[250px] text-sm">
+          <p>
+            A <b>Dense layer</b> connects every input neuron to every output neuron.
+            Commonly used for classification.
+          </p>
+          <a
+            href="https://keras.io/api/layers/core_layers/dense/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 underline mt-2 inline-block"
+          >
+            Learn more → Keras Dense
+          </a>
+        </div>
+      )
+    case 'Convolution':
+      return (
+        <div className="max-w-[250px] text-sm">
+          <p>
+            A <b>Conv layer</b> detects spatial patterns using filters and kernels — ideal for image data.
+          </p>
+          <a
+            href="https://keras.io/api/layers/convolution_layers/convolution2d/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-indigo-500 underline mt-2 inline-block"
+          >
+            Learn more → Keras Conv2D
+          </a>
+        </div>
+      )
+    case 'Flatten':
+      return (
+        <div className="max-w-[250px] text-sm">
+          <p>
+            <b>Flatten</b> reshapes tensors into 1D for feeding into dense layers.
+          </p>
+          <a
+            href="https://keras.io/api/layers/reshaping_layers/flatten/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-yellow-600 underline mt-2 inline-block"
+          >
+            Learn more → Keras Flatten
+          </a>
+        </div>
+      )
+    case 'Dropout':
+      return (
+        <div className="max-w-[250px] text-sm">
+          <p>
+            <b>Dropout</b> randomly drops neurons during training to prevent overfitting.
+          </p>
+          <a
+            href="https://keras.io/api/layers/regularization_layers/dropout/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-orange-500 underline mt-2 inline-block"
+          >
+            Learn more → Keras Dropout
+          </a>
+        </div>
+      )
+    case 'Pooling':
+      return (
+        <div className="max-w-[250px] text-sm">
+          <p>
+            <b>Max pooling</b> reduces spatial dimensions by taking the maximum value inside each window.
+          </p>
+          <a
+            href="https://keras.io/api/layers/pooling_layers/max_pooling2d/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-emerald-600 underline mt-2 inline-block"
+          >
+            Learn more → Keras MaxPooling2D
+          </a>
+        </div>
+      )
+  }
+}
 
 // --- Drag Handler ---
 function createDragStartHandler(template: LayerTemplate) {

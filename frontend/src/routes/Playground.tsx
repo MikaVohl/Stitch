@@ -136,6 +136,14 @@ export default function Playground() {
       const { source, target } = connection;
       if (!source || !target) return;
 
+      console.log('[ReactFlow] connect attempt', {
+        source,
+        target,
+        sourceHandle: connection.sourceHandle ?? null,
+        targetHandle: connection.targetHandle ?? null,
+        existingEdges: edges,
+      })
+
       const sourceLayer = layers[source];
       const targetLayer = layers[target];
 
@@ -158,7 +166,7 @@ export default function Playground() {
         targetHandle: connection.targetHandle ?? null,
       });
     },
-    [layers, addEdge]
+    [layers, edges, addEdge]
   );
 
   const onEdgesChange = useCallback(
@@ -215,6 +223,10 @@ export default function Playground() {
         }
         | { kind: 'Flatten'; params: Record<string, never> }
         | { kind: 'Dropout'; params: { rate: number } }
+        | {
+            kind: 'Pooling'
+            params: { type: 'max'; pool_size: number; stride: number; padding: number }
+          }
 
       try {
         const payload = JSON.parse(raw) as LayerTemplatePayload
@@ -260,6 +272,18 @@ export default function Playground() {
             kind: 'Dropout',
             params: {
               rate: payload.params.rate,
+            },
+            position,
+          })
+        } else if (payload.kind === 'Pooling') {
+          addLayer({
+            id: generateLayerId('Pooling'),
+            kind: 'Pooling',
+            params: {
+              type: 'max',
+              pool_size: payload.params.pool_size,
+              stride: payload.params.stride,
+              padding: payload.params.padding,
             },
             position,
           })

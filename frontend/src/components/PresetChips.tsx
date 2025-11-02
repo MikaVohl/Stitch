@@ -46,6 +46,14 @@ export function getPresetGraph(preset: PresetType): {
   layers: Record<string, AnyLayer>
   edges: GraphEdge[]
 } {
+  const makeEdge = (id: string, source: string, target: string): GraphEdge => ({
+    id,
+    source,
+    target,
+    sourceHandle: 'output',
+    targetHandle: 'input',
+  })
+
   switch (preset) {
     case 'blank':
       return {
@@ -64,7 +72,7 @@ export function getPresetGraph(preset: PresetType): {
           },
         },
         edges: [
-          { id: 'input-1-output-1', source: 'input-1', target: 'output-1' },
+          makeEdge('input-1-output-1', 'input-1', 'output-1'),
         ],
       }
 
@@ -97,9 +105,9 @@ export function getPresetGraph(preset: PresetType): {
           },
         },
         edges: [
-          { id: 'input-1-flatten-1', source: 'input-1', target: 'flatten-1' },
-          { id: 'flatten-1-dense-1', source: 'flatten-1', target: 'dense-1' },
-          { id: 'dense-1-output-1', source: 'dense-1', target: 'output-1' },
+          makeEdge('input-1-flatten-1', 'input-1', 'flatten-1'),
+          makeEdge('flatten-1-dense-1', 'flatten-1', 'dense-1'),
+          makeEdge('dense-1-output-1', 'dense-1', 'output-1'),
         ],
       }
 
@@ -162,14 +170,14 @@ export function getPresetGraph(preset: PresetType): {
           },
         },
         edges: [
-          { id: 'input-1-conv-1', source: 'input-1', target: 'conv-1' },
-          { id: 'conv-1-pool-1', source: 'conv-1', target: 'pool-1' },
-          { id: 'pool-1-conv-2', source: 'pool-1', target: 'conv-2' },
-          { id: 'conv-2-pool-2', source: 'conv-2', target: 'pool-2' },
-          { id: 'pool-2-flatten-1', source: 'pool-2', target: 'flatten-1' },
-          { id: 'flatten-1-dense-1', source: 'flatten-1', target: 'dense-1' },
-          { id: 'dense-1-dropout-1', source: 'dense-1', target: 'dropout-1' },
-          { id: 'dropout-1-output-1', source: 'dropout-1', target: 'output-1' },
+          makeEdge('input-1-conv-1', 'input-1', 'conv-1'),
+          makeEdge('conv-1-pool-1', 'conv-1', 'pool-1'),
+          makeEdge('pool-1-conv-2', 'pool-1', 'conv-2'),
+          makeEdge('conv-2-pool-2', 'conv-2', 'pool-2'),
+          makeEdge('pool-2-flatten-1', 'pool-2', 'flatten-1'),
+          makeEdge('flatten-1-dense-1', 'flatten-1', 'dense-1'),
+          makeEdge('dense-1-dropout-1', 'dense-1', 'dropout-1'),
+          makeEdge('dropout-1-output-1', 'dropout-1', 'output-1'),
         ],
       }
   }

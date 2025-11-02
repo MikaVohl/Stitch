@@ -159,8 +159,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         return !sameSourcePort && !sameTargetPort
       })
 
+      const updatedEdges = [...nextEdges, edge] as GraphEdge[]
+      console.log('[GraphStore] Edges updated:', updatedEdges)
       return {
-        edges: [...nextEdges, edge] as GraphEdge[]
+        edges: updatedEdges
       }
     })
     get().recomputeShapes()
@@ -241,8 +243,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     schema.edges.forEach((edge) => {
       get().addEdge({
         ...edge,
-        sourceHandle: edge.sourceHandle ?? null,
-        targetHandle: edge.targetHandle ?? null,
+        sourceHandle: edge.sourceHandle ?? 'output',
+        targetHandle: edge.targetHandle ?? 'input',
       })
     })
   },
@@ -263,8 +265,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
     const normalizedEdges = edges.map((edge) => ({
       ...edge,
-      sourceHandle: edge.sourceHandle ?? null,
-      targetHandle: edge.targetHandle ?? null,
+      sourceHandle: edge.sourceHandle ?? 'output',
+      targetHandle: edge.targetHandle ?? 'input',
     })) as GraphEdge[]
 
     set({
