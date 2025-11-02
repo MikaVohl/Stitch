@@ -20,14 +20,8 @@ import { HyperparamsPanel, type Hyperparams, DEFAULT_HYPERPARAMS } from '@/compo
 import { validateConnection, notifyConnectionError, hasIncomingConnection } from '@/lib/shapeInference'
 import { TrainingMetricsSlideOver } from '@/components/TrainingMetricsSlideOver'
 import { useTrainingMetrics } from '@/hooks/useTraining'
-import { SaveModel } from '@/hooks/useModels'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { DialogClose } from '@radix-ui/react-dialog'
 import { LayersPanel } from '@/components/LayersPanel'
 import type { ActivationType } from '@/types/graph'
-import { useQueryClient } from '@tanstack/react-query'
 
 
 
@@ -41,9 +35,6 @@ export default function Playground() {
   const { layers, edges, addLayer, addEdge, removeEdge, updateLayerPosition, removeLayer } = useGraphStore()
   const [hyperparams, setHyperparams] = useState<Hyperparams>(DEFAULT_HYPERPARAMS)
   const [metricsSlideOverOpen, setMetricsSlideOverOpen] = useState(false)
-  const [modelName, setModelName] = useState('')
-  const mutation = SaveModel();
-  const queryClient = useQueryClient();
   const {
     metrics,
     currentState,
@@ -51,17 +42,6 @@ export default function Playground() {
     runId,
     startTraining,
   } = useTrainingMetrics()
-
-  function save() {
-    console.log('works here!@')
-    if (modelName.trim().length > 0) {
-      mutation.mutate({name: modelName.trim()})
-      queryClient.invalidateQueries({ queryKey: ['models'] });
-      setModelName('')
-    } else {
-      console.log('Model name is required')
-    }
-  }
 
   // Convert store state to ReactFlow format with auto-layout
   const reactFlowNodes = useMemo((): Node[] => {
@@ -261,40 +241,11 @@ export default function Playground() {
           <LayersPanel />
         </div>
 
-        <Dialog>
-          <DialogTrigger asChild>
-            <button
-              className="absolute top-4 right-4 z-10 bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2.5 rounded-lg shadow-lg transition-colors flex items-center gap-2 cursor-pointer"
-            >
-              Save
-            </button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Save Model</DialogTitle>
-              <div className="mt-4">
-                  <Input
-                    name="modelName"
-                    placeholder="Model Name"
-                    className="w-full"
-                    value={modelName}
-                    onChange={(event) => setModelName(event.target.value)}
-                  />
-                  <DialogClose asChild>
-                    <Button className="mt-4 w-full" onClick={() => save()}>Save</Button>
-                  </DialogClose>
-              </div>
-
-            </DialogHeader>
-          </DialogContent>
-        </Dialog>
-
-
         {/* Floating Train Button */}
         <button
           onClick={handleRun}
           disabled={isTraining}
-          className={`absolute top-4 right-26 z-10 ${isTraining
+          className={`absolute top-4 right-4 z-10 ${isTraining
             ? 'bg-gray-400 cursor-not-allowed'
             : 'bg-gray-400 hover:bg-gray-600 cursor-pointer'
             } text-white font-semibold px-6 py-2.5 rounded-lg shadow-lg transition-colors flex items-center gap-2`}
@@ -320,7 +271,7 @@ export default function Playground() {
         {(metrics.length > 0 || currentState !== null) && (
           <button
             onClick={() => setMetricsSlideOverOpen(true)}
-            className="absolute top-4 right-54 z-10 bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2.5 rounded-lg shadow-lg transition-colors flex items-center gap-2 cursor-pointer"
+            className="absolute top-4 right-32 z-10 bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2.5 rounded-lg shadow-lg transition-colors flex items-center gap-2 cursor-pointer"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
               <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />

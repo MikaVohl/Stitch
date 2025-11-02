@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { useState } from 'react'
 import {
   Sheet,
   SheetContent,
@@ -17,6 +18,8 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import type { MetricData } from '@/api/types'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
 
 interface TrainingMetricsSlideOverProps {
   open: boolean
@@ -43,6 +46,40 @@ export const TrainingMetricsSlideOver: FC<TrainingMetricsSlideOverProps> = ({
   runId,
 }) => {
   const latestMetric = metrics.length > 0 ? metrics[metrics.length - 1] : null
+  const [modelName, setModelName] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const [savedModelId, setSavedModelId] = useState<string | null>(null)
+
+  const handleSaveModel = async () => {
+    if (!runId || !modelName.trim()) return
+
+    setIsSaving(true)
+    try {
+      const response = await fetch('/api/models/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          run_id: runId,
+          name: modelName.trim(),
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setSavedModelId(data.model_id)
+        setModelName('')
+      } else {
+        const error = await response.json()
+        alert(`Failed to save model: ${error.error}`)
+      }
+    } catch (error) {
+      alert('Failed to save model')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -55,6 +92,45 @@ export const TrainingMetricsSlideOver: FC<TrainingMetricsSlideOverProps> = ({
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
+          {/* Save Model Section - Show when training succeeded */}
+          {currentState === 'succeeded' && !savedModelId && (
+            <div className="space-y-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <h3 className="text-sm font-semibold text-green-900">Save Model</h3>
+              <p className="text-xs text-green-700">
+                Training completed successfully! Save this model to use it later.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Model name"
+                  value={modelName}
+                  onChange={(e) => setModelName(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleSaveModel}
+                  disabled={!modelName.trim() || isSaving}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {isSaving ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {savedModelId && (
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <h3 className="text-sm font-semibold text-green-900">Model Saved!</h3>
+              <p className="text-xs text-green-700 mt-1">
+                Model ID: <span className="font-mono">{savedModelId}</span>
+              </p>
+              <a
+                href={`/models/${savedModelId}`}
+                className="text-xs text-green-600 hover:underline mt-2 inline-block"
+              >
+                View model →
+              </a>
+            </div>
+          )}
           {/* Status */}
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-gray-700">Status</h3>

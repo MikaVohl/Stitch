@@ -399,8 +399,8 @@ def _persist_model_weights(model_id: str, model: nn.Module) -> Path:
     return output_path
 
 
-@app.route("/api/models/<model_id>/save", methods=["POST"])
-def save_trained_model(model_id: str):
+@app.route("/api/models/save", methods=["POST"])
+def save_trained_model():
     if not request.is_json:
         return _error_response("Expected JSON payload.", status=415)
 
@@ -413,63 +413,14 @@ def save_trained_model(model_id: str):
         return _error_response("Payload must be a JSON object.")
 
     run_id = payload.get("run_id")
-    model_entry = store.get_model(model_id)
-
-    if run_id is None:
-        architecture = payload.get("architecture")
-        hyperparams = payload.get("hyperparams")
-
-        if not isinstance(architecture, dict):
-            return _error_response("`architecture` must be provided as an object.", status=422)
-        if not isinstance(hyperparams, dict):
-            return _error_response("`hyperparams` must be provided as an object.", status=422)
-
-        architecture_copy = copy.deepcopy(architecture)
-        hyperparams_copy = copy.deepcopy(hyperparams)
-
-        if model_entry is None:
-            model_entry = {
-                "model_id": model_id,
-                "name": None,
-                "description": None,
-                "architecture": architecture_copy,
-                "hyperparams": hyperparams_copy,
-                "created_at": _utcnow_iso(),
-                "trained": False,
-                "saved_model_path": None,
-                "last_trained_at": None,
-            }
-            store.add_model(model_id, model_entry)
-        else:
-            updates = {
-                "architecture": architecture_copy,
-                "hyperparams": hyperparams_copy,
-                "trained": False,
-                "saved_model_path": None,
-                "last_trained_at": None,
-            }
-            store.update_model(model_id, updates)
-            model_entry = store.get_model(model_id)
-
-        response = {
-            "model_id": model_id,
-            "trained": False,
-            "architecture": copy.deepcopy(model_entry.get("architecture", {})),
-            "hyperparams": copy.deepcopy(model_entry.get("hyperparams", {})),
-            "saved_model_path": model_entry.get("saved_model_path"),
-        }
-
-        return jsonify(response), 200
+    model_name = payload.get("name")
 
     if not isinstance(run_id, str) or not run_id:
         return _error_response("`run_id` is required.", status=400)
 
-    if model_entry is None:
-        return _error_response("Unknown model_id.", status=404)
-
     run_entry = store.get_run(run_id)
-    if run_entry is None or run_entry.get("model_id") != model_id:
-        return _error_response("Run does not exist for given model.", status=404)
+    if run_entry is None:
+        return _error_response("Run does not exist.", status=404)
 
     if run_entry.get("state") != "succeeded":
         return _error_response("Run is not ready for saving.", status=409)
@@ -482,32 +433,46 @@ def save_trained_model(model_id: str):
     if not output_path.exists():
         return _error_response("Persisted model file is missing.", status=500)
 
-    store.update_model(
-        model_id,
-        {
-            "trained": True,
-            "saved_model_path": str(output_path),
-            "last_trained_at": model_entry.get("last_trained_at") or _utcnow_iso(),
-        },
-    )
+    # Create new model
+    model_id = _generate_id("m")
+    created_at = _utcnow_iso()
+    architecture = run_entry.get("architecture", {})
+    hyperparams = run_entry.get("hyperparams", {})
 
-    model_entry = store.get_model(model_id)
+    # Rename model file from run_id to model_id
+    new_model_path = _model_file_path(model_id)
+    output_path.rename(new_model_path)
+
+    model_entry = {
+        "model_id": model_id,
+        "name": model_name,
+        "description": None,
+        "architecture": copy.deepcopy(architecture),
+        "hyperparams": copy.deepcopy(hyperparams),
+        "created_at": created_at,
+        "trained": True,
+        "saved_model_path": str(new_model_path),
+        "last_trained_at": created_at,
+    }
+    store.add_model(model_id, model_entry)
+
+    # Link run to model
+    store.update_run(run_id, {
+        "model_id": model_id,
+        "saved_model_path": str(new_model_path),
+    })
 
     response = {
         "model_id": model_id,
         "run_id": run_id,
-        "saved_path": str(output_path),
+        "saved_path": str(new_model_path),
         "trained": True,
-        "saved_model_path": str(output_path),
-        "architecture": copy.deepcopy(model_entry.get("architecture", {}))
-        if model_entry
-        else None,
-        "hyperparams": copy.deepcopy(model_entry.get("hyperparams", {}))
-        if model_entry
-        else None,
+        "name": model_name,
+        "architecture": copy.deepcopy(architecture),
+        "hyperparams": copy.deepcopy(hyperparams),
     }
 
-    return jsonify(response), 200
+    return jsonify(response), 201
 
 
 def _start_training_thread(model_id, run_id, architecture, hyperparams):
@@ -557,7 +522,9 @@ def _start_training_thread(model_id, run_id, architecture, hyperparams):
                 on_checkpoint=on_checkpoint,
             )
 
-            output_path = _persist_model_weights(model_id, model)
+            # Save model weights to temporary location
+            temp_model_id = run_id  # Use run_id for temporary storage
+            output_path = _persist_model_weights(temp_model_id, model)
             completed_at = _utcnow_iso()
             store.update_run(
                 run_id,
@@ -567,14 +534,6 @@ def _start_training_thread(model_id, run_id, architecture, hyperparams):
                     "test_accuracy": test_accuracy,
                     "completed_at": completed_at,
                     "saved_model_path": str(output_path),
-                },
-            )
-            store.update_model(
-                model_id,
-                {
-                    "trained": True,
-                    "saved_model_path": str(output_path),
-                    "last_trained_at": completed_at,
                 },
             )
 
@@ -643,32 +602,18 @@ def train_model():
     except ValueError as exc:
         return _error_response(str(exc))
 
-    model_id = _generate_id("m")
     run_id = _generate_id("r")
     created_at = _utcnow_iso()
 
     # Work with deep copies to avoid sharing references across threads.
     architecture = json.loads(json.dumps(architecture))
     hyperparams = json.loads(json.dumps(hyperparams))
-    store.add_model(
-        model_id,
-        {
-            "model_id": model_id,
-            "architecture": architecture,
-            "hyperparams": hyperparams,
-            "created_at": created_at,
-            "name": None,
-            "description": None,
-            "trained": False,
-            "saved_model_path": None,
-            "last_trained_at": None,
-        },
-    )
+
     store.add_run(
         run_id,
         {
             "run_id": run_id,
-            "model_id": model_id,
+            "model_id": None,
             "state": "queued",
             "epochs_total": hyperparams["epochs"],
             "metrics": [],
@@ -676,14 +621,14 @@ def train_model():
             "created_at": created_at,
             "events_url": f"/api/runs/{run_id}/events",
             "hyperparams": hyperparams,
+            "architecture": architecture,
             "saved_model_path": None,
         },
     )
 
-    _start_training_thread(model_id, run_id, architecture, hyperparams)
+    _start_training_thread(None, run_id, architecture, hyperparams)
 
     response = {
-        "model_id": model_id,
         "run_id": run_id,
         "status": "queued",
         "created_at": created_at,
