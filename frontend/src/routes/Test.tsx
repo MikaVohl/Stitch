@@ -125,7 +125,7 @@ export default function Test() {
           </p>
         </header>
 
-        <div className="grid gap-8 lg:grid-cols-[380px,1fr]">
+        <div className="grid gap-8 :grid-cols-[380px,1fr]">
           <section className="space-y-6">
             <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
               <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">

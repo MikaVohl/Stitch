@@ -17,7 +17,7 @@ export default function App() {
         <BrowserRouter>
           <header className="h-16 border-b border-gray-200 bg-white shadow-sm">
             <div className="h-full grid grid-cols-3 max-w-7xl mx-auto px-4 flex gap-8">
-              <h1 className="text-xl flex items-center gap-2 font-bold text-gray-900"><img src="/Group 9.svg" alt="" className="h-4 w-14" />Stitch</h1>
+              <h1 className="text-xl flex items-center gap-2 font-bold text-gray-900"><img src="/kiwi.svg" alt="" className="h-6 w-6" />Stitch</h1>
                 <nav className="flex gap-4 text-sm justify-center font-medium">
                 <NavLink
                   to="/playground"
