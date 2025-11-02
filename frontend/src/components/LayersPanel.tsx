@@ -3,6 +3,11 @@ import clsx from 'clsx'
 import { Info } from 'lucide-react'
 import type { DragEvent } from 'react'
 import type { ActivationType } from '@/types/graph'
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from '@/components/ui/tooltip'
 
 // --- Types ---
 type DenseTemplate = {
@@ -54,9 +59,15 @@ type PoolingTemplate = {
     stride: number
     padding: number
   }
+  docsUrl: string
 }
 
-type LayerTemplate = DenseTemplate | ConvTemplate | FlattenTemplate | DropoutTemplate | PoolingTemplate
+type LayerTemplate =
+  | DenseTemplate
+  | ConvTemplate
+  | FlattenTemplate
+  | DropoutTemplate
+  | PoolingTemplate
 
 // --- Styles ---
 const TEMPLATE_STYLES: Record<
@@ -126,7 +137,7 @@ const LAYER_TEMPLATES: LayerTemplate[] = [
     description: 'Fully connected layer connecting all inputs to all outputs.',
     kind: 'Dense',
     params: { units: 64, activation: 'relu' },
-    docsUrl: 'https://keras.io/api/layers/core_layers/dense/'
+    docsUrl: 'https://keras.io/api/layers/core_layers/dense/',
   },
   {
     id: 'conv-layer',
@@ -134,7 +145,7 @@ const LAYER_TEMPLATES: LayerTemplate[] = [
     description: 'Applies 2D convolution operations to extract spatial features.',
     kind: 'Convolution',
     params: { filters: 32, kernel: 3, stride: 1, padding: 'same', activation: 'relu' },
-    docsUrl: 'https://keras.io/api/layers/convolution_layers/convolution2d/'
+    docsUrl: 'https://keras.io/api/layers/convolution_layers/convolution2d/',
   },
   {
     id: 'flatten-layer',
@@ -142,7 +153,7 @@ const LAYER_TEMPLATES: LayerTemplate[] = [
     description: 'Converts multi-dimensional features into a single vector.',
     kind: 'Flatten',
     params: {},
-    docsUrl: 'https://keras.io/api/layers/reshaping_layers/flatten/'
+    docsUrl: 'https://keras.io/api/layers/reshaping_layers/flatten/',
   },
   {
     id: 'dropout-layer',
@@ -150,7 +161,7 @@ const LAYER_TEMPLATES: LayerTemplate[] = [
     description: 'Randomly drops a fraction of neurons during training to prevent overfitting.',
     kind: 'Dropout',
     params: { rate: 0.2 },
-    docsUrl: 'https://keras.io/api/layers/regularization_layers/dropout/'
+    docsUrl: 'https://keras.io/api/layers/regularization_layers/dropout/',
   },
   {
     id: 'maxpool-layer',
@@ -158,95 +169,9 @@ const LAYER_TEMPLATES: LayerTemplate[] = [
     description: 'Downsamples feature maps by taking the maximum value in each window.',
     kind: 'Pooling',
     params: { type: 'max', pool_size: 2, stride: 2, padding: 0 },
+    docsUrl: 'https://keras.io/api/layers/pooling_layers/max_pooling2d/',
   },
 ]
-
-// --- Tooltip content generator ---
-function getTooltipContent(template: LayerTemplate) {
-  switch (template.kind) {
-    case 'Dense':
-      return (
-        <div className="max-w-[250px] text-sm">
-          <p>
-            A <b>Dense layer</b> connects every input neuron to every output neuron.
-            Commonly used for classification.
-          </p>
-          <a
-            href="https://keras.io/api/layers/core_layers/dense/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-500 underline mt-2 inline-block"
-          >
-            Learn more → Keras Dense
-          </a>
-        </div>
-      )
-    case 'Convolution':
-      return (
-        <div className="max-w-[250px] text-sm">
-          <p>
-            A <b>Conv layer</b> detects spatial patterns using filters and kernels — ideal for image data.
-          </p>
-          <a
-            href="https://keras.io/api/layers/convolution_layers/convolution2d/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-indigo-500 underline mt-2 inline-block"
-          >
-            Learn more → Keras Conv2D
-          </a>
-        </div>
-      )
-    case 'Flatten':
-      return (
-        <div className="max-w-[250px] text-sm">
-          <p>
-            <b>Flatten</b> reshapes tensors into 1D for feeding into dense layers.
-          </p>
-          <a
-            href="https://keras.io/api/layers/reshaping_layers/flatten/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-yellow-600 underline mt-2 inline-block"
-          >
-            Learn more → Keras Flatten
-          </a>
-        </div>
-      )
-    case 'Dropout':
-      return (
-        <div className="max-w-[250px] text-sm">
-          <p>
-            <b>Dropout</b> randomly drops neurons during training to prevent overfitting.
-          </p>
-          <a
-            href="https://keras.io/api/layers/regularization_layers/dropout/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-orange-500 underline mt-2 inline-block"
-          >
-            Learn more → Keras Dropout
-          </a>
-        </div>
-      )
-    case 'Pooling':
-      return (
-        <div className="max-w-[250px] text-sm">
-          <p>
-            <b>Max pooling</b> reduces spatial dimensions by taking the maximum value inside each window.
-          </p>
-          <a
-            href="https://keras.io/api/layers/pooling_layers/max_pooling2d/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-emerald-600 underline mt-2 inline-block"
-          >
-            Learn more → Keras MaxPooling2D
-          </a>
-        </div>
-      )
-  }
-}
 
 // --- Drag Handler ---
 function createDragStartHandler(template: LayerTemplate) {
@@ -262,13 +187,18 @@ function createDragStartHandler(template: LayerTemplate) {
   }
 }
 
-// --- Main Component ---
+// --- Component ---
 export function LayersPanel({ className }: { className?: string }) {
   const [isOpen, setIsOpen] = useState(true)
 
   return (
-    <div className={clsx('bg-white rounded-lg shadow-lg border border-gray-200 w-[200px] md:w-[280px] pointer-events-auto', className)}>
-      {/* Header with rotating arrow */}
+    <div
+      className={clsx(
+        'bg-white rounded-lg shadow-lg border border-gray-200 w-[200px] md:w-[280px] pointer-events-auto',
+        className
+      )}
+    >
+      {/* Header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full px-4 py-2.5 flex cursor-pointer items-center justify-between rounded-t-lg transition-colors hover:bg-gray-50 border-b border-gray-200"
@@ -296,6 +226,7 @@ export function LayersPanel({ className }: { className?: string }) {
 
           {LAYER_TEMPLATES.map((template) => {
             const style = TEMPLATE_STYLES[template.kind]
+
             return (
               <div
                 key={template.id}
@@ -310,21 +241,34 @@ export function LayersPanel({ className }: { className?: string }) {
               >
                 <div className="flex items-center gap-1">
                   <div className={`text-sm font-semibold ${style.label}`}>{template.label}</div>
-                  <a
-                    href={template.docsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={clsx(
-                      'rounded-full p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1',
-                      style.icon,
-                      style.iconHover
-                    )}
-                    title={`Learn more about ${template.label}`}
-                    aria-label={`Learn more about ${template.label}`}
-                  >
-                    <Info className="h-3.5 w-3.5" />
-                  </a>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        className={clsx(
+                          'rounded-full p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1',
+                          style.icon,
+                          style.iconHover
+                        )}
+                        aria-label={`Info about ${template.label}`}
+                      >
+                        <Info className="h-3.5 w-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-[260px] text-xs">
+                      <p className="mb-2">{template.description}</p>
+                      <a
+                        href={template.docsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={clsx('underline font-medium', style.icon)}
+                      >
+                        Learn more → Keras Docs
+                      </a>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
+
                 <div className={`text-xs ${style.description}`}>{template.description}</div>
               </div>
             )
