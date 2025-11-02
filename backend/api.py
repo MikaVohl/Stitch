@@ -326,7 +326,6 @@ def _start_training_thread(model_id, run_id, architecture, hyperparams):
         payload = dict(data)
         payload.setdefault("run_id", run_id)
         event_queue.put({"event": event_name, "data": payload})
-        print("added to event queue:", payload, flush=True)
 
     def worker():
         try:

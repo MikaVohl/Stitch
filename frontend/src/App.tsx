@@ -3,7 +3,6 @@ import { Toaster } from 'sonner'
 import { BrowserRouter, NavLink, Route, Routes, Navigate } from 'react-router-dom'
 import Playground from './routes/Playground'
 import Models from './routes/Models'
-import Arena from './routes/Arena'
 import ModelPage from './routes/Model'
 import Test from './routes/Test'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -35,13 +34,6 @@ export default function App() {
                   Models
                 </NavLink>
                 <NavLink
-                  to="/arena"
-                  className="flex items-center gap-2"
-                >
-                  <img src="/arena.svg" alt="" className="h-4 w-4 transition-transform hover:-translate-y-1" />
-                  Arena
-                </NavLink>
-                <NavLink
                   to="/test"
                   className="flex items-center gap-2"
                 >
@@ -58,7 +50,6 @@ export default function App() {
             <Route path="/playground" element={<Playground />} />
             <Route path="/models" element={<Models />} />
             <Route path="/models/:id" element={<ModelPage />} />
-            <Route path="/arena" element={<Arena />} />
             <Route path="/test" element={<Test />} />
           </Routes>
         </BrowserRouter>

@@ -127,7 +127,7 @@ export function HyperparamsPanel({
             <select
               value={params.optimizer.type}
               onChange={(e) => updateOptimizer('type', e.target.value)}
-              className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-20 px-1 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="sgd">SGD</option>
               <option value="adam">Adam</option>

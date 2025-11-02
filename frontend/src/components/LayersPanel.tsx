@@ -28,7 +28,25 @@ type ConvTemplate = {
   }
 }
 
-type LayerTemplate = DenseTemplate | ConvTemplate
+type FlattenTemplate = {
+  id: string
+  label: string
+  description: string
+  kind: 'Flatten'
+  params: Record<string, never>
+}
+
+type DropoutTemplate = {
+  id: string
+  label: string
+  description: string
+  kind: 'Dropout'
+  params: {
+    rate: number
+  }
+}
+
+type LayerTemplate = DenseTemplate | ConvTemplate | FlattenTemplate | DropoutTemplate
 
 const TEMPLATE_STYLES: Record<
   LayerTemplate['kind'],
@@ -54,12 +72,26 @@ const TEMPLATE_STYLES: Record<
     label: 'text-indigo-700',
     description: 'text-indigo-600',
   },
+  Flatten: {
+    border: 'border-yellow-300',
+    background: 'bg-yellow-50',
+    hover: 'hover:bg-yellow-100',
+    label: 'text-yellow-700',
+    description: 'text-yellow-600',
+  },
+  Dropout: {
+    border: 'border-orange-300',
+    background: 'bg-orange-50',
+    hover: 'hover:bg-orange-100',
+    label: 'text-orange-700',
+    description: 'text-orange-600',
+  },
 }
 
 const DENSE_LAYER_TEMPLATE: DenseTemplate = {
   id: 'dense-layer',
   label: 'Dense Layer',
-  description: 'Default 64 units · ReLU',
+  description: 'Fully connected linear layer',
   kind: 'Dense',
   params: {
     units: 64,
@@ -70,7 +102,7 @@ const DENSE_LAYER_TEMPLATE: DenseTemplate = {
 const CONV_LAYER_TEMPLATE: ConvTemplate = {
   id: 'conv-layer',
   label: 'Conv Layer',
-  description: '32 filters · 3×3 · ReLU',
+  description: '2D convolutional layer',
   kind: 'Convolution',
   params: {
     filters: 32,
@@ -81,7 +113,30 @@ const CONV_LAYER_TEMPLATE: ConvTemplate = {
   },
 }
 
-const LAYER_TEMPLATES: LayerTemplate[] = [DENSE_LAYER_TEMPLATE, CONV_LAYER_TEMPLATE]
+const FLATTEN_LAYER_TEMPLATE: FlattenTemplate = {
+  id: 'flatten-layer',
+  label: 'Flatten',
+  description: 'Convert image features into a vector',
+  kind: 'Flatten',
+  params: {},
+}
+
+const DROPOUT_LAYER_TEMPLATE: DropoutTemplate = {
+  id: 'dropout-layer',
+  label: 'Dropout',
+  description: 'Randomly drop a fraction of activations',
+  kind: 'Dropout',
+  params: {
+    rate: 0.2,
+  },
+}
+
+const LAYER_TEMPLATES: LayerTemplate[] = [
+  DENSE_LAYER_TEMPLATE,
+  CONV_LAYER_TEMPLATE,
+  FLATTEN_LAYER_TEMPLATE,
+  DROPOUT_LAYER_TEMPLATE,
+]
 
 function createDragStartHandler(template: LayerTemplate) {
   return (event: DragEvent<HTMLDivElement>) => {

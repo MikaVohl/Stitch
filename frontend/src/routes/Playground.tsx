@@ -61,7 +61,7 @@ const layerIdPrefixes: Record<LayerKind, string> = {
   Output: 'output',
 }
 
-const duplicableLayerKinds = new Set<LayerKind>(['Dense', 'Convolution', 'Pooling', 'Dropout'])
+const duplicableLayerKinds = new Set<LayerKind>(['Dense', 'Convolution', 'Pooling', 'Dropout', 'Flatten'])
 
 function generateLayerId(kind: LayerKind) {
   const prefix = layerIdPrefixes[kind]
@@ -198,15 +198,17 @@ export default function Playground() {
       type LayerTemplatePayload =
         | { kind: 'Dense'; params: { units: number; activation: ActivationType } }
         | {
-          kind: 'Convolution'
-          params: {
-            filters: number
-            kernel: number
-            stride: number
-            padding: 'valid' | 'same'
-            activation: Exclude<ActivationType, 'softmax'>
+            kind: 'Convolution'
+            params: {
+              filters: number
+              kernel: number
+              stride: number
+              padding: 'valid' | 'same'
+              activation: Exclude<ActivationType, 'softmax'>
+            }
           }
-        }
+        | { kind: 'Flatten'; params: Record<string, never> }
+        | { kind: 'Dropout'; params: { rate: number } }
 
       try {
         const payload = JSON.parse(raw) as LayerTemplatePayload
@@ -236,6 +238,22 @@ export default function Playground() {
               stride: payload.params.stride,
               padding: payload.params.padding,
               activation: payload.params.activation,
+            },
+            position,
+          })
+        } else if (payload.kind === 'Flatten') {
+          addLayer({
+            id: generateLayerId('Flatten'),
+            kind: 'Flatten',
+            params: {},
+            position,
+          })
+        } else if (payload.kind === 'Dropout') {
+          addLayer({
+            id: generateLayerId('Dropout'),
+            kind: 'Dropout',
+            params: {
+              rate: payload.params.rate,
             },
             position,
           })
