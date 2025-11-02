@@ -16,11 +16,14 @@ import '@xyflow/react/dist/style.css'
 import type { StoredLayer } from '@/hooks/useModels'
 
 const MNIST_SIDE = 28
-const HORIZONTAL_SPACING = 240
+const HORIZONTAL_SPACING = 320
 const VERTICAL_SPACING = 72
 const SAMPLE_FACTOR = 8
-const INPUT_SPACING = 32
-const INPUT_X_SHIFT = -HORIZONTAL_SPACING * 0.75
+const CONV_ROW_SPACING = 48
+const CONV_COL_X_SHIFT = 28
+const CONV_COL_Y_OFFSET = 12
+const INPUT_SPACING = 36
+const INPUT_X_SHIFT = -HORIZONTAL_SPACING * 2
 
 type InputNeuronData = {
   activation: number
@@ -31,17 +34,39 @@ type NeuronNodeData = {
   totalNeurons: number
   sampledIndex: number
   isOutput: boolean
+  highlighted?: boolean
+}
+
+type ConvNeuronNodeData = {
+  filters: number
+  sampledFilters: number
+  index: number
+  columns: number
+}
+
+type OperationNodeData = {
+  label: string
 }
 
 interface NetworkVisualizationProps {
   layers: StoredLayer[]
   currentDrawing?: number[][]
+  activeOutput?: number | null
 }
+
+const DENSE_LAYER_TYPES = new Set(['linear', 'dense', 'output'])
+const CONV_LAYER_TYPES = new Set(['conv2d'])
+const OPERATION_LAYER_TYPES = new Set(['maxpool2d', 'flatten', 'dropout'])
 
 function sanitizeLayers(layers: StoredLayer[]): StoredLayer[] {
   return layers.filter((layer) => {
     const type = layer.type.toLowerCase()
-    return type === 'input' || type === 'linear' || type === 'dense' || type === 'output'
+    return (
+      type === 'input' ||
+      DENSE_LAYER_TYPES.has(type) ||
+      CONV_LAYER_TYPES.has(type) ||
+      OPERATION_LAYER_TYPES.has(type)
+    )
   })
 }
 
@@ -50,7 +75,19 @@ function detectNeuronCount(layer: StoredLayer): number {
   const sized = layer as Record<string, unknown>
   if (typeof sized.units === 'number') return Math.max(1, sized.units as number)
   if (typeof sized.size === 'number') return Math.max(1, sized.size as number)
+  if (typeof sized.filters === 'number') return Math.max(1, sized.filters as number)
+  if (typeof sized.out_channels === 'number') return Math.max(1, sized.out_channels as number)
   if (typeof layer.in === 'number') return Math.max(1, layer.in)
+  return 1
+}
+
+function detectFilterCount(layer: StoredLayer): number {
+  const sized = layer as Record<string, unknown>
+  if (typeof sized.filters === 'number') return Math.max(1, sized.filters as number)
+  if (typeof sized.out_channels === 'number') return Math.max(1, sized.out_channels as number)
+  if (typeof sized.channels === 'number') return Math.max(1, sized.channels as number)
+  if (typeof sized.depth === 'number') return Math.max(1, sized.depth as number)
+  if (typeof layer.out === 'number') return Math.max(1, layer.out)
   return 1
 }
 
@@ -96,17 +133,23 @@ function createInputNodes(drawing: number[][] | null): {
 
 function buildNodesAndEdges(
   layers: StoredLayer[],
-  drawing: number[][] | null
-): { nodes: Node<InputNeuronData | NeuronNodeData>[]; edges: Edge[] } {
+  drawing: number[][] | null,
+  activeOutput?: number | null
+): { nodes: Node<InputNeuronData | NeuronNodeData | ConvNeuronNodeData | OperationNodeData>[]; edges: Edge[] } {
   const filtered = sanitizeLayers(layers)
-  const nodes: Node<InputNeuronData | NeuronNodeData>[] = []
+  const nodes: Node<InputNeuronData | NeuronNodeData | ConvNeuronNodeData | OperationNodeData>[] = []
   const edges: Edge[] = []
   const edgeIds = new Set<string>()
+  const convColumns = new Map<string, { column: number; totalColumns: number }>()
 
   const { nodes: inputNodes, nodeIds: inputIds } = createInputNodes(drawing)
   nodes.push(...inputNodes)
 
-  let previousNodeIds: string[] = inputIds
+  const EDGE_STEP_FIRST_LAYER = 1
+  const rightmostColumnIds = inputIds.filter((id) => id.endsWith(`-${MNIST_SIDE - 1}`))
+  const initialEdgeSources = rightmostColumnIds.length > 0 ? rightmostColumnIds : inputIds
+
+  let previousNodeIds: string[] = initialEdgeSources
   let renderIndex = 1
 
   filtered.forEach((layer, idx) => {
@@ -116,54 +159,148 @@ function buildNodesAndEdges(
     }
 
     const isLast = idx === filtered.length - 1
-    const neuronCount = detectNeuronCount(layer)
-    const displayCount = isLast ? neuronCount : Math.max(1, Math.ceil(neuronCount / SAMPLE_FACTOR))
-    const yOffset = ((displayCount - 1) * VERTICAL_SPACING) / 2
-
     const currentIds: string[] = []
 
-    for (let i = 0; i < displayCount; i++) {
-      const nodeId = `layer-${renderIndex}-${i}`
+    if (CONV_LAYER_TYPES.has(layerType)) {
+      const filters = detectFilterCount(layer)
+      const baseSample = Math.max(1, Math.ceil(filters / SAMPLE_FACTOR))
+      const sampleCount = Math.max(1, baseSample * baseSample)
+      const columns = Math.max(1, Math.ceil(Math.sqrt(sampleCount)))
+      const rows = Math.max(1, Math.ceil(sampleCount / columns))
+      const yOffset = ((rows - 1) * CONV_ROW_SPACING) / 2
+      const baseX = renderIndex * HORIZONTAL_SPACING
+
+      for (let i = 0; i < sampleCount; i++) {
+        const row = Math.floor(i / columns)
+        const col = i % columns
+        const nodeId = `layer-${renderIndex}-conv-${i}`
+        currentIds.push(nodeId)
+
+        nodes.push({
+          id: nodeId,
+          type: 'convNeuron',
+          position: {
+            x: baseX + col * CONV_COL_X_SHIFT,
+            y: row * CONV_ROW_SPACING - yOffset + col * CONV_COL_Y_OFFSET,
+          },
+          data: {
+            filters,
+            sampledFilters: sampleCount,
+            index: i,
+            columns,
+          },
+          draggable: false,
+          selectable: false,
+          sourcePosition: Position.Right,
+          targetPosition: Position.Left,
+        })
+        convColumns.set(nodeId, { column: col, totalColumns: columns })
+      }
+    } else if (DENSE_LAYER_TYPES.has(layerType)) {
+      const neuronCount = detectNeuronCount(layer)
+      const displayCount = isLast
+        ? neuronCount
+        : Math.max(1, Math.ceil(neuronCount / SAMPLE_FACTOR))
+      const yOffset = ((displayCount - 1) * VERTICAL_SPACING) / 2
+
+      for (let i = 0; i < displayCount; i++) {
+        const nodeId = `layer-${renderIndex}-${i}`
+        currentIds.push(nodeId)
+
+        nodes.push({
+          id: nodeId,
+          type: 'neuron',
+          position: {
+            x: renderIndex * HORIZONTAL_SPACING,
+            y: i * VERTICAL_SPACING - yOffset,
+          },
+          data: {
+            layerIndex: renderIndex,
+            totalNeurons: neuronCount,
+            sampledIndex: isLast ? i : Math.min(i * SAMPLE_FACTOR, neuronCount - 1),
+            isOutput: isLast,
+            highlighted: isLast && typeof activeOutput === 'number' && activeOutput === i,
+          },
+          draggable: false,
+          selectable: false,
+          sourcePosition: Position.Right,
+          targetPosition: Position.Left,
+        })
+      }
+    } else if (OPERATION_LAYER_TYPES.has(layerType)) {
+      const nodeId = `layer-${renderIndex}-operation`
       currentIds.push(nodeId)
+
+      const label = layerType === 'maxpool2d'
+        ? 'Max Pool'
+        : layerType.charAt(0).toUpperCase() + layerType.slice(1)
 
       nodes.push({
         id: nodeId,
-        type: 'neuron',
+        type: 'operation',
         position: {
           x: renderIndex * HORIZONTAL_SPACING,
-          y: i * VERTICAL_SPACING - yOffset,
+          y: 0,
         },
         data: {
-          layerIndex: renderIndex,
-          totalNeurons: neuronCount,
-          sampledIndex: isLast ? i : Math.min(i * SAMPLE_FACTOR, neuronCount - 1),
-          isOutput: isLast,
+          label,
         },
         draggable: false,
         selectable: false,
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
       })
+    } else {
+      renderIndex += 1
+      return
+    }
+
+    const selectConvBoundary = (ids: string[]): string[] => {
+      const convCandidates = ids.filter((id) => convColumns.has(id))
+      if (convCandidates.length === 0) return []
+      const boundary = convCandidates.filter((id) => {
+        const info = convColumns.get(id)!
+        return info.column === 0 || info.column === info.totalColumns - 1
+      })
+      return Array.from(new Set(boundary))
+    }
+
+    const selectWithStep = (ids: string[], step: number): string[] => {
+      if (ids.length <= 1) return ids
+      const chosen: string[] = []
+      for (let i = 0; i < ids.length; i += step) {
+        chosen.push(ids[i])
+      }
+      const last = ids[ids.length - 1]
+      if (last) {
+        chosen.push(last)
+      }
+      return Array.from(new Set(chosen))
     }
 
     const isFirstHiddenLayer = renderIndex === 1
+    const previousIsConv = previousNodeIds.some((id) => convColumns.has(id))
+    const currentIsConv = currentIds.some((id) => convColumns.has(id))
+
     const previousStep = isFirstHiddenLayer
-      ? 1
+      ? EDGE_STEP_FIRST_LAYER
       : Math.max(1, Math.ceil(previousNodeIds.length / 64))
     const currentStep = isFirstHiddenLayer
       ? 1
       : Math.max(1, Math.ceil(currentIds.length / 32))
 
-    for (let s = 0; s < previousNodeIds.length; s += previousStep) {
-      const sourceId = previousNodeIds[s]
-      if (!sourceId) continue
-      for (let t = 0; t < currentIds.length; t += currentStep) {
-        const targetId = currentIds[t]
-        if (!targetId) continue
+    const sourceSelection = previousIsConv
+      ? selectConvBoundary(previousNodeIds)
+      : selectWithStep(previousNodeIds, previousStep)
+    const targetSelection = currentIsConv
+      ? selectConvBoundary(currentIds)
+      : selectWithStep(currentIds, currentStep)
 
+    sourceSelection.forEach((sourceId) => {
+      targetSelection.forEach((targetId) => {
+        if (!sourceId || !targetId) return
         const edgeId = `edge-${sourceId}-${targetId}`
-        if (edgeIds.has(edgeId)) continue
-
+        if (edgeIds.has(edgeId)) return
         edgeIds.add(edgeId)
         edges.push({
           id: edgeId,
@@ -173,25 +310,8 @@ function buildNodesAndEdges(
           animated: false,
           style: { stroke: '#1f293780', strokeWidth: 1 },
         })
-      }
-    }
-
-    const lastSource = previousNodeIds[previousNodeIds.length - 1]
-    const lastTarget = currentIds[currentIds.length - 1]
-    if (lastSource && lastTarget) {
-      const edgeId = `edge-${lastSource}-${lastTarget}`
-      if (!edgeIds.has(edgeId)) {
-        edgeIds.add(edgeId)
-        edges.push({
-          id: edgeId,
-          source: lastSource,
-          target: lastTarget,
-          type: 'straight',
-          animated: false,
-          style: { stroke: '#1f293780', strokeWidth: 1 },
-        })
-      }
-    }
+      })
+    })
 
     previousNodeIds = currentIds
     renderIndex += 1
@@ -200,52 +320,111 @@ function buildNodesAndEdges(
   return { nodes, edges }
 }
 
-function NeuronNode({ data }: NodeProps<any>) {
+function NeuronNode(props: NodeProps) {
+  const data = props.data as NeuronNodeData
+  const highlighted = !!data.highlighted
+
+  const baseClasses =
+    'relative flex h-12 w-12 items-center justify-center rounded-full border-2 shadow-sm transition-colors'
+  const visualClasses = highlighted
+    ? 'border-blue-500 bg-blue-100 text-blue-900 ring-2 ring-blue-200'
+    : 'border-slate-300 bg-white text-slate-700'
+
   return (
-    <div className="relative flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-300 bg-white shadow-sm">
+    <div className={`${baseClasses} ${visualClasses}`}>
       {!data.isOutput && (
         <Handle
           type="source"
           position={Position.Right}
-          className="!h-2.5 !w-2.5 !border-0 !bg-slate-400"
+          className={`h-2.5! w-2.5! border-0! ${highlighted ? 'bg-blue-400!' : 'bg-orange-300!'}`}
         />
       )}
       <Handle
         type="target"
         position={Position.Left}
+        className={`h-2.5! w-2.5! border-0! ${highlighted ? 'bg-blue-400!' : 'bg-orange-300!'}`}
+      />
+      {data.isOutput && (
+        <span className="text-sm font-semibold">
+          {Math.min(9, Math.max(0, data.sampledIndex)).toString()}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function OperationNode(props: NodeProps) {
+  const data = props.data as OperationNodeData
+
+  return (
+    <div className="flex h-16 w-32 flex-col items-center justify-center rounded-xl border-2 border-slate-300 bg-slate-100 text-sm font-semibold text-slate-700 shadow-sm">
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!h-2.5 !w-2.5 !border-0 !bg-slate-400"
+      />
+      <span className="uppercase text-lg font-bold tracking-wide">{data.label}</span>
+      <Handle
+        type="source"
+        position={Position.Right}
         className="!h-2.5 !w-2.5 !border-0 !bg-slate-400"
       />
     </div>
   )
 }
 
-function InputNeuronNode({ data }: NodeProps<any>) {
-  const intensity = Math.round(data.activation * 255)
+function InputNeuronNode(props: NodeProps) {
+  const intensity = Math.round((props.data as InputNeuronData).activation * 255)
   const color = `rgb(${intensity}, ${intensity}, ${intensity})`
 
   return (
     <div
-      className="flex h-[18px] w-[18px] items-center justify-center rounded-full border border-slate-300 shadow-sm"
+      className="flex h-[32px] w-[32px] items-center justify-center rounded-full border border-slate-300 shadow-sm"
       style={{ backgroundColor: color }}
-    />
+    >
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!h-2.5 !w-2.5 !border-0 !bg-slate-400"
+      />
+    </div>
+  )
+}
+
+function ConvNeuronNode(props: NodeProps) {
+  return (
+    <div className="relative flex h-12 w-12 items-center justify-center rounded-full border-2 border-indigo-400 bg-white shadow-sm">
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!h-2.5 !w-2.5 !border-0 !bg-indigo-400"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!h-2.5 !w-2.5 !border-0 !bg-indigo-400"
+      />
+    </div>
   )
 }
 
 const nodeTypes: NodeTypes = {
-  neuron: NeuronNode as any,
-  inputNeuron: InputNeuronNode as any,
+  neuron: NeuronNode,
+  inputNeuron: InputNeuronNode,
+  convNeuron: ConvNeuronNode,
+  operation: OperationNode,
 }
 
-export function NetworkVisualization({ layers, currentDrawing }: NetworkVisualizationProps) {
+export function NetworkVisualization({ layers, currentDrawing, activeOutput }: NetworkVisualizationProps) {
   const drawingMatrix = useMemo(() => clampedMatrix(currentDrawing), [currentDrawing])
 
   const { nodes, edges } = useMemo(
-    () => buildNodesAndEdges(layers, drawingMatrix),
-    [layers, drawingMatrix]
+    () => buildNodesAndEdges(layers, drawingMatrix, activeOutput),
+    [layers, drawingMatrix, activeOutput]
   )
 
   return (
-    <div className="h-[520px] w-full rounded-xl border border-slate-200 bg-white">
+    <div className="relative h-[520px] w-full rounded-xl border border-slate-200 bg-white">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -261,32 +440,39 @@ export function NetworkVisualization({ layers, currentDrawing }: NetworkVisualiz
         proOptions={{ hideAttribution: true }}
       >
         <Background gap={24} color="#e2e8f0" />
-        <MiniMap
-          className="!bg-white !border !border-slate-200 !rounded-lg !shadow-sm"
-          nodeBorderRadius={6}
-          pannable
-          zoomable
-          nodeColor={(node) =>
-            node.type === 'inputNeuron' ? '#cbd5f530' : '#94a3b8'
-          }
-        />
         <Controls showInteractive={false} className="rounded-lg border border-slate-200 bg-white shadow-sm" />
-        <Panel position="top-right" className="rounded-lg border border-slate-200 bg-white/95 p-3 text-xs text-slate-600 shadow-sm backdrop-blur">
-          <p className="font-semibold text-slate-900">Legend</p>
-          <ul className="mt-2 space-y-1">
+        <Panel
+          position="top-center"
+          className="pointer-events-none w-full px-6 pt-4"
+          style={{ width: '100%', left: '50%', transform: 'translate(-50%, 0)' }}
+        >
+          <div className="pointer-events-auto flex w-full flex-col rounded-xl border border-slate-200 bg-white/95 px-6 py-3 text-xs text-slate-600 shadow-sm backdrop-blur">
+            <p className="text-center text-sm font-semibold text-slate-900">Legend</p>
+            <p className="text-center text-xs font-light italic text-slate-400">Each node represents 8 neurons</p>
+
+            <ul className="mt-2 grid grid-cols-2 gap-x-4 justify-items-center gap-y-1 sm:grid-cols-4 lg:grid-cols-5">
             <li className="flex items-center gap-2">
-              <span className="inline-flex h-3 w-3 rounded-full bg-slate-300" />
+              <span className="inline-flex h-3 w-3 rounded-full bg-slate-900" />
               <span>Input pixels</span>
             </li>
             <li className="flex items-center gap-2">
-              <span className="inline-flex h-3 w-3 rounded-full border border-slate-400" />
-              <span>Sampled hidden/output neurons</span>
+              <span className="inline-flex h-3 w-3 rounded-full border border-orange-300" />
+              <span>Dense neurons</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="inline-flex h-3 w-3 rounded-full border border-indigo-400 bg-white" />
+              <span>Convolutional Neurons</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="inline-flex h-3 w-5 rounded bg-slate-200 border border-slate-400" />
+              <span>Operations </span>
             </li>
             <li className="flex items-center gap-2">
               <span className="inline-flex h-px w-6 bg-slate-500/60" />
-              <span>Connections (thinned for clarity)</span>
+              <span>Connections</span>
             </li>
-          </ul>
+            </ul>
+          </div>
         </Panel>
       </ReactFlow>
     </div>

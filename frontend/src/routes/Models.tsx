@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { HyperparamsTable } from '@/components/HyperparamsTable';
 import { useModels, type StoredLayer } from '@/hooks/useModels';
 import { Link } from 'react-router-dom';
@@ -37,6 +38,7 @@ export function summarizeHyperparams(hyperparams?: Record<string, unknown>): str
 
 export default function Models() {
   const { data: models, isLoading, isError, error } = useModels();
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'accuracy'>('newest');
 
   if (isLoading) {
     return (
@@ -81,7 +83,22 @@ export default function Models() {
     <main className="min-h-[calc(100vh-4rem)] bg-gray-50 py-10">
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 sm:px-6 lg:px-8">
         <header className="flex flex-col gap-2">
-          <h1 className="text-3xl font-semibold text-gray-900">Models</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-semibold text-gray-900">Models</h1>
+            <div className="flex items-center gap-2">
+              <label htmlFor="sort" className="text-sm font-medium text-gray-700">Sort by:</label>
+              <select
+                id="sort"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'accuracy')}
+                className="rounded-md border cursor-pointer border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="accuracy">Highest accuracy</option>
+              </select>
+            </div>
+          </div>
           <p className="text-sm text-gray-600">
             Every training run creates a snapshot of the architecture and hyperparameters you used. Review them here
             before jumping back into the arena.
@@ -90,7 +107,18 @@ export default function Models() {
         <div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            {models?.map((model) => (
+            {(models ?? [])
+              .sort((a, b) => {
+                if (sortBy === 'accuracy') {
+                  const aAcc = a.highest_accuracy ?? -1;
+                  const bAcc = b.highest_accuracy ?? -1;
+                  return bAcc - aAcc;
+                }
+                const aDate = a.created_at ? new Date(a.created_at).getTime() : 0;
+                const bDate = b.created_at ? new Date(b.created_at).getTime() : 0;
+                return sortBy === 'newest' ? bDate - aDate : aDate - bDate;
+              })
+              .map((model) => (
               <Link to={`./${model.model_id}`} key={model.model_id} className="block">
                 <article
                   className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-transform hover:-translate-y-1 hover:shadow-lg"
@@ -126,12 +154,6 @@ export default function Models() {
                       <dt className="font-medium text-gray-900">Architecture</dt>
                       <dd className="mt-1 rounded-lg bg-gray-50 p-3 text-xs font-mono text-gray-700">
                         {summarizeArchitecture(model.architecture?.layers)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="font-medium text-gray-900">Hyperparameters</dt>
-                      <dd className="mt-1 rounded-lg bg-gray-50 p-3 text-xs text-gray-700">
-                        <HyperparamsTable hyperparams={model.hyperparams} />
                       </dd>
                     </div>
                   </dl>

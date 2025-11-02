@@ -128,6 +128,10 @@ export default function Playground() {
       targetHandle: edge.targetHandle ?? undefined,
       label: edge.label,
       animated: true,
+      style: {
+        strokeWidth: 3,
+        stroke: '#1f293799'
+      }
     }));
   }, [edges]);
 

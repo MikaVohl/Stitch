@@ -29,10 +29,12 @@ export default function Test() {
   const latestRunId = succeededRuns.length > 0 ? succeededRuns[0].run_id : ''
 
   useEffect(() => {
-    if (modelId && modelId !== selectedModelId) {
+    if (modelId) {
       setSelectedModelId(modelId)
+    } else {
+      setSelectedModelId('')
     }
-  }, [modelId, selectedModelId])
+  }, [modelId])
 
   useEffect(() => {
     if (selectedModelId) {
@@ -99,8 +101,8 @@ export default function Test() {
       const detected = typeof data?.label === 'number'
         ? data.label
         : typeof data?.prediction === 'number'
-        ? data.prediction
-        : null
+          ? data.prediction
+          : null
       setPrediction(detected)
     } catch (err) {
       console.error('Inference failed:', err)
@@ -148,14 +150,14 @@ export default function Test() {
                   Select a trained model, review the latest successful run, then draw in the grid.
                 </p>
               </div>
-              <div className="space-y-6 px-6 pb-6 pt-5">
+              <div className="space-y-6 px-6 pb-6 pt-5 grid-cols-2 grid">
                 <div className="flex flex-col gap-4">
                   <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Model
                     <select
                       value={selectedModelId}
                       onChange={(e) => setSelectedModelId(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-inner focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      className="mt-1 w-full rounded-lg border cursor-pointer border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-inner focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                     >
                       <option value="">Select a model</option>
                       {models?.map((model) => (
@@ -171,16 +173,36 @@ export default function Test() {
                       {latestRunId ? latestRunId : 'No successful runs available'}
                     </p>
                   </label>
+                  <button
+                    onClick={handleInference}
+                    disabled={!selectedModelId || !latestRunId || !flattenedPixels || isRunning}
+                    className="inline-flex items-center justify-center gap-2 cursor-pointer rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  >
+                    {isRunning ? (
+                      <>
+                        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Running inference…
+                      </>
+                    ) : (
+                      <>
+                        <span>Run inference</span>
+                        <span aria-hidden className="text-xs text-blue-200"></span>
+                      </>
+                    )}
+                  </button>
+                  {prediction !== null && (
+                    <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-center text-sm text-blue-800">
+                      Predicted digit:&nbsp;
+                      <span className="font-semibold text-blue-900">{prediction}</span>
+                    </div>
+                  )}
                 </div>
 
-                <div className="grid gap-6 lg:grid-cols-[minmax(0,200px),1fr]">
-                  <div className="rounded-2xl bg-slate-900 p-4 text-slate-50 shadow-inner">
-                    <p className="text-xs uppercase tracking-wider text-slate-400">Drawing Grid</p>
-                    <p className="mt-1 text-sm text-slate-100">
-                      Use your cursor to sketch a digit. Click <span className="font-semibold">Clear</span> to reset.
-                    </p>
-                  </div>
 
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,200px),1fr]">
                   <div className="flex flex-col items-center justify-center">
                     <DrawingGrid
                       onDrawingComplete={(pixels) => {
@@ -191,37 +213,13 @@ export default function Test() {
                   </div>
                 </div>
 
-                <button
-                  onClick={handleInference}
-                  disabled={!selectedModelId || !latestRunId || !flattenedPixels || isRunning}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300"
-                >
-                  {isRunning ? (
-                    <>
-                      <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      Running inference…
-                    </>
-                  ) : (
-                    <>
-                      <span>Run inference</span>
-                      <span aria-hidden className="text-xs text-blue-200">⌘⏎</span>
-                    </>
-                  )}
-                </button>
 
-                {prediction !== null && (
-                  <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-center text-sm text-blue-800">
-                    Predicted digit:&nbsp;
-                    <span className="font-semibold text-blue-900">{prediction}</span>
-                  </div>
-                )}
+
+
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+            {/* <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
               <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
                 <h3 className="text-sm font-semibold text-slate-900">Input preview</h3>
                 <p className="text-xs text-slate-500">
@@ -238,14 +236,14 @@ export default function Test() {
                 <div className="max-h-32 overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-[11px] leading-relaxed text-slate-700">
                   {flattenedPixels
                     ? `[${flattenedPixels
-                        .slice(0, 120)
-                        .map((value) => value.toFixed(3))
-                        .join(', ')}${flattenedPixels.length > 120 ? ', …' : ''}]`
+                      .slice(0, 120)
+                      .map((value) => value.toFixed(3))
+                      .join(', ')}${flattenedPixels.length > 120 ? ', …' : ''}]`
                     : 'Draw on the grid to preview the flattened array.'}
                 </div>
 
               </div>
-            </div>
+            </div> */}
           </section>
 
           <section className="flex h-full flex-col">
@@ -260,6 +258,7 @@ export default function Test() {
                 <NetworkVisualization
                   layers={selectedModel?.architecture?.layers ?? []}
                   currentDrawing={currentDrawing}
+                  activeOutput={prediction}
                 />
               </div>
             </div>

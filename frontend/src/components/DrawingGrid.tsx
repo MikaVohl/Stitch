@@ -96,7 +96,7 @@ export function DrawingGrid({ width = 28, height = 28, onDrawingComplete }: Draw
       />
       <button
         onClick={clearCanvas}
-        className="rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+        className="rounded-md bg-gray-100 px-3 cursor-pointer py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
       >
         Clear
       </button>
