@@ -97,7 +97,7 @@ export default function Models() {
                 >
                   <header className="flex items-start justify-between">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{model.name}</h3>
+                      <h3 className="text-2xl font-semibold text-gray-900">{model.name}</h3>
                       <p className="mt-1 text-sm text-gray-500">
                         {model.created_at
                           ? new Date(model.created_at).toLocaleString()

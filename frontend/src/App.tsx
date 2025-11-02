@@ -51,6 +51,7 @@ export default function App() {
             <Route path="/models" element={<Models />} />
             <Route path="/models/:id" element={<ModelPage />} />
             <Route path="/test" element={<Test />} />
+            <Route path="/test/:modelId" element={<Test />} />
           </Routes>
         </BrowserRouter>
 

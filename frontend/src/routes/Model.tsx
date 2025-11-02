@@ -1,5 +1,5 @@
 import { useModel, type TrainingRun } from "@/hooks/useModels";
-import { useParams } from "react-router-dom"
+import { Link, useParams } from "react-router-dom"
 import { summarizeArchitecture } from "./Models";
 import { MetricsCharts } from "@/components/MetricsCharts";
 import { HyperparamsTable } from "@/components/HyperparamsTable";
@@ -22,7 +22,7 @@ export default function ModelPage() {
     <div className="max-w-6xl mx-auto space-y-8 p-12">
       {/* Model Info */}
       <div>
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{model.name}</h1>
             <p className="mt-1 text-sm text-gray-500">
@@ -31,9 +31,20 @@ export default function ModelPage() {
                 : 'Creation time unknown'}
             </p>
           </div>
-          <span className="rounded-md bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
-            {model.architecture?.layers?.length ?? 0} layers
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-md bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
+              {model.architecture?.layers?.length ?? 0} layers
+            </span>
+            <Link
+              to={`/test/${model.model_id}`}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-500"
+            >
+              Test this model
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h9.69l-3.22-3.22a.75.75 0 111.06-1.06l4.5 4.5a.75.75 0 010 1.06l-4.5 4.5a.75.75 0 11-1.06-1.06l3.22-3.22H3.75A.75.75 0 013 10z" clipRule="evenodd" />
+              </svg>
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">

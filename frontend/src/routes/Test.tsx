@@ -1,11 +1,14 @@
 import { DrawingGrid } from '@/components/DrawingGrid'
 import { NetworkVisualization } from '@/components/NetworkVisualization'
 import { useModel, useModels } from '@/hooks/useModels'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 
 export default function Test() {
+  const { modelId } = useParams<{ modelId?: string }>()
+  const navigate = useNavigate()
   const { data: models, isLoading, isError, error } = useModels()
-  const [selectedModelId, setSelectedModelId] = useState<string>('')
+  const [selectedModelId, setSelectedModelId] = useState<string>(() => modelId ?? '')
   const [currentDrawing, setCurrentDrawing] = useState<number[][]>()
   const [isRunning, setIsRunning] = useState(false)
   const [prediction, setPrediction] = useState<number | null>(null)
@@ -24,6 +27,22 @@ export default function Test() {
   }, [selectedModelDetail])
 
   const latestRunId = succeededRuns.length > 0 ? succeededRuns[0].run_id : ''
+
+  useEffect(() => {
+    if (modelId && modelId !== selectedModelId) {
+      setSelectedModelId(modelId)
+    }
+  }, [modelId, selectedModelId])
+
+  useEffect(() => {
+    if (selectedModelId) {
+      if (selectedModelId !== modelId) {
+        navigate(`/test/${selectedModelId}`, { replace: true })
+      }
+    } else if (modelId) {
+      navigate('/test', { replace: true })
+    }
+  }, [selectedModelId, modelId, navigate])
 
   /**
    * Converts a 2D drawing grid (values 0–255) into a flattened
@@ -120,16 +139,16 @@ export default function Test() {
           </p>
         </header>
 
-        <div className="grid gap-8 :grid-cols-[380px,1fr]">
+        <div className="grid gap-8 lg:grid-cols-[380px,1fr]">
           <section className="space-y-6">
             <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
               <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
                 <h2 className="text-sm font-semibold text-slate-900">Draw &amp; Configure</h2>
                 <p className="text-xs text-slate-500">
-                  Select a trained model, then draw in the grid.
+                  Select a trained model, review the latest successful run, then draw in the grid.
                 </p>
               </div>
-              <div className="space-y-6 px-6 pb-6 pt-5 grid-cols-2 grid">
+              <div className="space-y-6 px-6 pb-6 pt-5">
                 <div className="flex flex-col gap-4">
                   <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Model
@@ -146,7 +165,33 @@ export default function Test() {
                       ))}
                     </select>
                   </label>
-                                  <button
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Using latest successful run
+                    <p className="mt-1 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-800 shadow-inner">
+                      {latestRunId ? latestRunId : 'No successful runs available'}
+                    </p>
+                  </label>
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,200px),1fr]">
+                  <div className="rounded-2xl bg-slate-900 p-4 text-slate-50 shadow-inner">
+                    <p className="text-xs uppercase tracking-wider text-slate-400">Drawing Grid</p>
+                    <p className="mt-1 text-sm text-slate-100">
+                      Use your cursor to sketch a digit. Click <span className="font-semibold">Clear</span> to reset.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col items-center justify-center">
+                    <DrawingGrid
+                      onDrawingComplete={(pixels) => {
+                        setCurrentDrawing(pixels)
+                        setPrediction(null)
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <button
                   onClick={handleInference}
                   disabled={!selectedModelId || !latestRunId || !flattenedPixels || isRunning}
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300"
@@ -162,30 +207,17 @@ export default function Test() {
                   ) : (
                     <>
                       <span>Run inference</span>
-                      <span aria-hidden className="text-xs text-blue-200"></span>
+                      <span aria-hidden className="text-xs text-blue-200">⌘⏎</span>
                     </>
                   )}
                 </button>
-                                {prediction !== null && (
+
+                {prediction !== null && (
                   <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-center text-sm text-blue-800">
                     Predicted digit:&nbsp;
                     <span className="font-semibold text-blue-900">{prediction}</span>
                   </div>
                 )}
-                </div>
-
-
-
-                <div className="flex flex-col items-center justify-center">
-                  <DrawingGrid
-                    onDrawingComplete={(pixels) => {
-                      setCurrentDrawing(pixels)
-                      setPrediction(null)
-                    }}
-                  />
-                </div>
-
-
               </div>
             </div>
 
