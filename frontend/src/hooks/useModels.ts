@@ -13,7 +13,7 @@ export type StoredLayer = {
 export type TrainingRun = {
   run_id: string
   model_id: string
-  state: 'queued' | 'running' | 'succeeded' | 'failed'
+  state: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
   epochs_total: number
   epoch?: number
   metrics: MetricData[]

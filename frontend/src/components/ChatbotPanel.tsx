@@ -81,7 +81,7 @@ export function ChatbotPanel({ onViewProposal, messages, isStreaming, isGenerati
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg transition-all z-50"
+        className="fixed bottom-4 right-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg transition-all z-50 cursor-pointer"
       >
         <svg
           className="w-6 h-6"

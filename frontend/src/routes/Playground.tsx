@@ -84,7 +84,12 @@ export default function Playground() {
     runId,
     samplePredictions,
     startTraining,
+    cancelTraining: cancelActiveTraining,
+    isCancelling,
   } = useTrainingMetrics()
+  const canCancelTraining = Boolean(
+    runId && (isTraining || currentState === 'running' || currentState === 'queued')
+  )
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([])
   const [copiedLayer, setCopiedLayer] = useState<{
@@ -414,14 +419,38 @@ export default function Playground() {
             </button>
           )}
           <button
-            onClick={handleRun}
-            disabled={isTraining}
-            className={`${isTraining
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-green-500 hover:bg-green-600 cursor-pointer'
+            onClick={() => {
+              if (canCancelTraining) {
+                void cancelActiveTraining()
+              } else {
+                handleRun()
+              }
+            }}
+            disabled={canCancelTraining ? isCancelling : isTraining}
+            className={`${canCancelTraining
+              ? isCancelling
+                ? 'bg-red-300 cursor-wait'
+                : 'bg-red-500 hover:bg-red-600 cursor-pointer'
+              : isTraining
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-green-500 hover:bg-green-600 cursor-pointer'
               } text-white font-semibold px-6 py-2.5 rounded-lg shadow-lg transition-colors flex items-center gap-2`}
           >
-            {isTraining ? (
+            {canCancelTraining ? (
+              <>
+                {isCancelling ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M5 4a1 1 0 00-1 1v10a1 1 0 001 1h2a1 1 0 001-1V5a1 1 0 00-1-1H5zm8 0a1 1 0 00-1 1v10a1 1 0 001 1h2a1 1 0 001-1V5a1 1 0 00-1-1h-2z" />
+                  </svg>
+                )}
+                {isCancelling ? 'Cancelling...' : 'Cancel training'}
+              </>
+            ) : isTraining ? (
               <>
                 <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -474,6 +503,11 @@ export default function Playground() {
         currentState={currentState}
         runId={runId}
         samplePredictions={samplePredictions}
+        onCancel={() => {
+          void cancelActiveTraining()
+        }}
+        canCancel={canCancelTraining}
+        isCancelling={isCancelling}
       />
 
       <ChatbotPanel

@@ -130,6 +130,15 @@ Launch an asynchronous training job for a model definition.
 ```
 - Returns `202 Accepted` with a payload containing the generated `model_id`, `run_id`, and `events_url` (`/api/runs/<run_id>/events`).
 - Training runs asynchronously in a background thread. Intermediate state and metrics are stored in the in-memory store and streamed via Server-Sent Events.
+- SSE `state` events can progress through `queued → running → succeeded/failed/cancelled`.
+- Only one training run may be active at a time; additional requests while a run is in progress return `409 Conflict`.
+
+### `POST /api/train/<run_id>/cancel`
+Request cancellation of an active training run.
+
+- Only runs in `queued` or `running` state can be cancelled.
+- Returns `202 Accepted` when the cancellation signal has been issued.
+- A `state` event with `{"state": "cancelled"}` is emitted once the worker stops.
 
 ### `GET /api/runs/<run_id>/events`
 Server-Sent Events (SSE) stream for a training run.

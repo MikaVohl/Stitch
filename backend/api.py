@@ -29,6 +29,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+_active_training_lock = threading.Lock()
+_active_training = {
+    "run_id": None,
+    "thread": None,
+    "cancel_event": None,
+}
 
 """
 Expected request payload:
@@ -90,7 +96,14 @@ def _generate_id(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex}"
 
 
-def _train_with_torch(model, train_loader, val_loader, hyperparams, on_checkpoint=None):
+def _train_with_torch(
+    model,
+    train_loader,
+    val_loader,
+    hyperparams,
+    on_checkpoint=None,
+    cancel_event=None,
+):
     import time
 
     device = torch.device("cpu")
@@ -108,7 +121,16 @@ def _train_with_torch(model, train_loader, val_loader, hyperparams, on_checkpoin
 
     training_start_time = time.time()
 
+    def should_cancel():
+        return cancel_event is not None and cancel_event.is_set()
+
+    if should_cancel():
+        return metrics, 0.0, True
+
     for epoch in range(1, epochs + 1):
+        if should_cancel():
+            return metrics, 0.0, True
+
         epoch_start_time = time.time()
         model.train()
         train_loss = 0.0
@@ -116,6 +138,9 @@ def _train_with_torch(model, train_loader, val_loader, hyperparams, on_checkpoin
         train_total = 0
 
         for inputs, targets in train_loader:
+            if should_cancel():
+                return metrics, 0.0, True
+
             inputs = inputs.to(device)
             targets = targets.to(device)
 
@@ -139,6 +164,9 @@ def _train_with_torch(model, train_loader, val_loader, hyperparams, on_checkpoin
         val_total = 0
         with torch.no_grad():
             for inputs, targets in val_loader:
+                if should_cancel():
+                    return metrics, 0.0, True
+
                 inputs = inputs.to(device)
                 targets = targets.to(device)
                 outputs = model(inputs)
@@ -180,7 +208,7 @@ def _train_with_torch(model, train_loader, val_loader, hyperparams, on_checkpoin
             on_checkpoint(metric_entry)
 
     test_accuracy = metrics[-1]["val_accuracy"] if metrics else 0.0
-    return metrics, test_accuracy
+    return metrics, test_accuracy, False
 
 
 def _format_sse(event_name, data):
@@ -318,7 +346,7 @@ def save_trained_model():
     return jsonify(response), 201
 
 
-def _start_training_thread(model_id, run_id, architecture, hyperparams):
+def _start_training_thread(model_id, run_id, architecture, hyperparams, cancel_event):
     event_queue = queue.Queue()
     store.add_event_queue(run_id, event_queue)
 
@@ -329,6 +357,21 @@ def _start_training_thread(model_id, run_id, architecture, hyperparams):
 
     def worker():
         try:
+            if cancel_event is not None and cancel_event.is_set():
+                completed_at = _utcnow_iso()
+                store.update_run(
+                    run_id,
+                    {
+                        "state": "cancelled",
+                        "completed_at": completed_at,
+                        "metrics": [],
+                        "test_accuracy": None,
+                        "sample_predictions": [],
+                    },
+                )
+                emit("state", {"state": "cancelled"})
+                return
+
             model = build_model(architecture)
             train_loader, val_loader = prepare_dataloaders(
                 hyperparams["batch_size"],
@@ -356,13 +399,29 @@ def _start_training_thread(model_id, run_id, architecture, hyperparams):
                     },
                 )
 
-            metrics, test_accuracy = _train_with_torch(
+            metrics, test_accuracy, was_cancelled = _train_with_torch(
                 model,
                 train_loader,
                 val_loader,
                 hyperparams,
                 on_checkpoint=on_checkpoint,
+                cancel_event=cancel_event,
             )
+            if was_cancelled:
+                completed_at = _utcnow_iso()
+                metrics_to_store = metrics if metrics else list(captured_metrics)
+                store.update_run(
+                    run_id,
+                    {
+                        "state": "cancelled",
+                        "metrics": metrics_to_store,
+                        "completed_at": completed_at,
+                        "test_accuracy": None,
+                        "sample_predictions": [],
+                    },
+                )
+                emit("state", {"state": "cancelled"})
+                return
 
             sample_predictions = _collect_sample_predictions(model, val_loader, limit=8)
 
@@ -406,11 +465,17 @@ def _start_training_thread(model_id, run_id, architecture, hyperparams):
         finally:
             event_queue.put(None)
             store.remove_event_queue(run_id)
+            with _active_training_lock:
+                if _active_training["run_id"] == run_id:
+                    _active_training["run_id"] = None
+                    _active_training["thread"] = None
+                    _active_training["cancel_event"] = None
 
     # Emit initial queued state before the worker starts.
     emit("state", {"state": "queued"})
     thread = threading.Thread(target=worker, daemon=True)
     thread.start()
+    return thread
 
 
 def _utcnow_iso():
@@ -446,29 +511,51 @@ def train_model():
     run_id = _generate_id("r")
     created_at = _utcnow_iso()
 
+    cancel_event = threading.Event()
+
+    with _active_training_lock:
+        active_run_id = _active_training["run_id"]
+        active_thread = _active_training["thread"]
+        if active_run_id is not None and (active_thread is None or active_thread.is_alive()):
+            return _error_response("Another training run is already in progress.", status=409)
+        _active_training["run_id"] = run_id
+        _active_training["cancel_event"] = cancel_event
+        _active_training["thread"] = None
+
     # Work with deep copies to avoid sharing references across threads.
     architecture = json.loads(json.dumps(architecture))
     hyperparams = json.loads(json.dumps(hyperparams))
 
-    store.add_run(
-        run_id,
-        {
-            "run_id": run_id,
-            "model_id": None,
-            "state": "queued",
-            "epochs_total": hyperparams["epochs"],
-            "metrics": [],
-            "test_accuracy": None,
-            "created_at": created_at,
-            "events_url": f"/api/runs/{run_id}/events",
-            "hyperparams": hyperparams,
-            "architecture": architecture,
-            "saved_model_path": None,
-            "sample_predictions": [],
-        },
-    )
+    try:
+        store.add_run(
+            run_id,
+            {
+                "run_id": run_id,
+                "model_id": None,
+                "state": "queued",
+                "epochs_total": hyperparams["epochs"],
+                "metrics": [],
+                "test_accuracy": None,
+                "created_at": created_at,
+                "events_url": f"/api/runs/{run_id}/events",
+                "hyperparams": hyperparams,
+                "architecture": architecture,
+                "saved_model_path": None,
+                "sample_predictions": [],
+            },
+        )
 
-    _start_training_thread(None, run_id, architecture, hyperparams)
+        thread = _start_training_thread(None, run_id, architecture, hyperparams, cancel_event)
+        with _active_training_lock:
+            if _active_training["run_id"] == run_id:
+                _active_training["thread"] = thread
+    except Exception:
+        with _active_training_lock:
+            if _active_training["run_id"] == run_id:
+                _active_training["run_id"] = None
+                _active_training["thread"] = None
+                _active_training["cancel_event"] = None
+        raise
 
     response = {
         "run_id": run_id,
@@ -481,6 +568,25 @@ def train_model():
     }
 
     return jsonify(response), 202
+
+
+@app.route("/api/train/<run_id>/cancel", methods=["POST"])
+def cancel_training(run_id):
+    run_entry = store.get_run(run_id)
+    if run_entry is None:
+        return _error_response("Unknown run_id.", status=404)
+
+    state = run_entry.get("state")
+    if state not in {"queued", "running"}:
+        return _error_response("Run is not currently active.", status=409)
+
+    with _active_training_lock:
+        if _active_training["run_id"] != run_id or _active_training["cancel_event"] is None:
+            return _error_response("Run is not currently active.", status=409)
+        cancel_event = _active_training["cancel_event"]
+        cancel_event.set()
+
+    return jsonify({"run_id": run_id, "status": "cancelling"}), 202
 
 
 @app.route("/api/infer", methods=["POST"])
