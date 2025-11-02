@@ -98,7 +98,7 @@ export default function Playground() {
     basePosition: { x: number; y: number } | null
     offset: number
   } | null>(null)
-  const { messages, isStreaming, isGeneratingSchema, proposedSchema, sendMessage, clearProposedSchema } = useChat()
+  const { messages, isStreaming, isGeneratingSchema, proposedSchema, sendMessage, clearProposedSchema, addMessage } = useChat()
 
   // Convert store state to ReactFlow format with auto-layout
   const reactFlowNodes = useMemo((): Node[] => {
@@ -385,15 +385,17 @@ export default function Playground() {
     if (proposedSchema) {
       console.log('Applying proposed schema:', proposedSchema)
       applyProposedSchema(proposedSchema)
+      addMessage({ role: 'system', content: 'Architecture changes applied successfully.' })
       setShowProposalPreview(false)
       clearProposedSchema()
     }
-  }, [proposedSchema, applyProposedSchema, clearProposedSchema])
+  }, [proposedSchema, applyProposedSchema, clearProposedSchema, addMessage])
 
   const handleRejectProposal = useCallback(() => {
+    addMessage({ role: 'system', content: 'Architecture changes rejected.' })
     setShowProposalPreview(false)
     clearProposedSchema()
-  }, [clearProposedSchema])
+  }, [clearProposedSchema, addMessage])
 
   return (
     <>

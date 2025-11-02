@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 import type { AnyLayer, GraphEdge } from '@/types/graph'
 
 export interface ChatMessage {
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'system'
   content: string
 }
 
@@ -25,6 +25,7 @@ export interface UseChatReturn {
   proposedSchema: ProposedSchema | null
   sendMessage: (message: string, requestSchemaChange: boolean, currentSchema?: { layers: Record<string, AnyLayer>, edges: GraphEdge[] }) => void
   clearProposedSchema: () => void
+  addMessage: (message: ChatMessage) => void
 }
 
 export function useChat(): UseChatReturn {
@@ -177,6 +178,10 @@ export function useChat(): UseChatReturn {
     setProposedSchema(null)
   }, [])
 
+  const addMessage = useCallback((message: ChatMessage) => {
+    setMessages((prev) => [...prev, message])
+  }, [])
+
   return {
     messages,
     isStreaming,
@@ -184,5 +189,6 @@ export function useChat(): UseChatReturn {
     proposedSchema,
     sendMessage,
     clearProposedSchema,
+    addMessage,
   }
 }

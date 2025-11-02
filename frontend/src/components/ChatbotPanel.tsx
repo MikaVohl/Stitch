@@ -155,16 +155,20 @@ export function ChatbotPanel({ onViewProposal, messages, isStreaming, isGenerati
         {messages.map((message, index) => (
           <div
             key={index}
-            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`flex ${message.role === 'user' ? 'justify-end' : message.role === 'system' ? 'justify-center' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[80%] rounded-lg px-4 py-2 ${message.role === 'user'
+              className={`${message.role === 'system' ? 'max-w-[90%]' : 'max-w-[80%]'} rounded-lg px-4 py-2 ${message.role === 'user'
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-900'
+                : message.role === 'system'
+                  ? 'bg-green-50 text-green-800 border border-green-200'
+                  : 'bg-gray-100 text-gray-900'
                 }`}
             >
               {message.role === 'user' ? (
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+              ) : message.role === 'system' ? (
+                <p className="text-xs text-center font-medium">{message.content}</p>
               ) : (
                 <div className="text-sm prose prose-sm max-w-none">
                   <ReactMarkdown>{message.content}</ReactMarkdown>
@@ -212,7 +216,7 @@ export function ChatbotPanel({ onViewProposal, messages, isStreaming, isGenerati
         <div className="px-4 pb-2">
           <button
             onClick={onViewProposal}
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+            className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors cursor-pointer"
           >
             View Architecture Proposal
           </button>
