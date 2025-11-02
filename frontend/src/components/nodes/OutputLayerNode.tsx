@@ -29,7 +29,7 @@ export function OutputLayerNode({ id }: NodeProps) {
         <div className="text-xs text-gray-600">
           <span className="font-medium">Activation:</span>{' '}
           <span className="px-2 py-0.5 bg-pink-100 text-pink-700 rounded border border-pink-300 font-medium">
-            {layer.params.activation}
+            Softmax
           </span>
         </div>
 

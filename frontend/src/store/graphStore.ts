@@ -489,9 +489,7 @@ export function graphToArchitecture(
         out: classes,
       })
 
-      if (layer.params.activation === 'softmax') {
-        backendLayers.push({ type: 'softmax' })
-      }
+      backendLayers.push({ type: 'softmax' })
 
       currentShape = { type: 'vector', size: classes }
     }

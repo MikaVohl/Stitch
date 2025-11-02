@@ -38,7 +38,7 @@ export function summarizeHyperparams(hyperparams?: Record<string, unknown>): str
 export default function Models() {
   const { data: models, isLoading, isError, error } = useModels();
 
-  if (isLoading) {
+  if (isLoading && (models?.length ?? 0) > 0) {
     return (
       <div className="rounded-xl border border-gray-200 bg-white p-8 text-gray-600 shadow-sm">
         Loading your models...
@@ -144,4 +144,3 @@ export default function Models() {
     </main>
   )
 }
-
