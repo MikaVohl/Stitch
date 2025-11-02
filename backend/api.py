@@ -1,42 +1,28 @@
 import copy
-import os
-os.environ.setdefault("OMP_NUM_THREADS", "1")
-os.environ.setdefault("MKL_NUM_THREADS", "1")
-os.environ.setdefault("OMP_WAIT_POLICY", "PASSIVE")
-
 from datetime import datetime, timezone
 import json
-<<<<<<< Updated upstream
 import math
-=======
 import logging
->>>>>>> Stashed changes
 import queue
 import threading
 import traceback
 import uuid
 import random
 from pathlib import Path
-
 from flask import Flask, Response, jsonify, request, stream_with_context
-
-# Configure logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
 import torch
-torch.set_num_threads(1)
-torch.set_num_interop_threads(1)
 from torch import nn
 from torch.utils.data import DataLoader, random_split, Subset
 from torchvision import datasets, transforms
-
-
 from controllers.model_controller import model_bp
 from store import store
+
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
 
 """
 Expected request payload:
@@ -233,12 +219,16 @@ def _validate_architecture(payload):
             if isinstance(padding, str):
                 padding = padding.lower()
                 if padding not in {"same", "valid"}:
-                    raise ValueError("Conv2d padding must be 'same', 'valid', or integer.")
+                    raise ValueError(
+                        "Conv2d padding must be 'same', 'valid', or integer."
+                    )
             else:
                 try:
                     padding = int(padding)
                 except (TypeError, ValueError) as exc:
-                    raise ValueError("Conv2d padding must be integer or string.") from exc
+                    raise ValueError(
+                        "Conv2d padding must be integer or string."
+                    ) from exc
                 if padding < 0:
                     raise ValueError("Conv2d padding cannot be negative.")
 
@@ -266,15 +256,13 @@ def _validate_architecture(payload):
                 next_he = max(
                     1,
                     math.floor(
-                        (current_shape["height"] + 2 * pad - kernel_size) / stride
-                        + 1
+                        (current_shape["height"] + 2 * pad - kernel_size) / stride + 1
                     ),
                 )
                 next_wi = max(
                     1,
                     math.floor(
-                        (current_shape["width"] + 2 * pad - kernel_size) / stride
-                        + 1
+                        (current_shape["width"] + 2 * pad - kernel_size) / stride + 1
                     ),
                 )
 
@@ -649,10 +637,13 @@ def save_trained_model():
     store.add_model(model_id, model_entry)
 
     # Link run to model
-    store.update_run(run_id, {
-        "model_id": model_id,
-        "saved_model_path": str(new_model_path),
-    })
+    store.update_run(
+        run_id,
+        {
+            "model_id": model_id,
+            "saved_model_path": str(new_model_path),
+        },
+    )
 
     response = {
         "model_id": model_id,
