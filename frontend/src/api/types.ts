@@ -32,7 +32,9 @@ export interface TrainingRequest {
       type: string
       in?: number
       out?: number
+      [key: string]: unknown
     }>
+    [key: string]: unknown
   }
   hyperparams: {
     epochs: number

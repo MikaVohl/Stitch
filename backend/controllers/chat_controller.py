@@ -66,8 +66,8 @@ Examples of when NOT to propose changes (just answer conversationally):
 When you DO propose changes:
 1. Provide a clear, conversational explanation of WHAT you're changing and WHY
 2. Focus on the neural network concepts, not implementation details
-3. After your explanation, write exactly: "Here is your updated schema:"
-4. Then include the complete JSON schema in a code block
+3. After your explanation, write exactly this sentence on its own line: "Certainly! Here is your current architecture schema, re-implemented as requested:"
+4. Immediately after that sentence, include the complete JSON schema wrapped in a ```json code block
 
 Schema format (use this but don't explain it to the user):
 {

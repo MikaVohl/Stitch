@@ -11,6 +11,13 @@ export interface ProposedSchema {
   edges: GraphEdge[]
 }
 
+const SCHEMA_MARKER =
+  'Certainly! Here is your current architecture schema, re-implemented as requested:'
+
+const removeJsonCodeBlocks = (text: string): string => {
+  return text.replace(/```json[\s\S]*?```/gi, '').trim()
+}
+
 export interface UseChatReturn {
   messages: ChatMessage[]
   isStreaming: boolean
@@ -70,7 +77,6 @@ export function useChat(): UseChatReturn {
         }
 
         let assistantMessage = ''
-        let displayedMessage = ''
         let stopDisplaying = false
         let buffer = ''
 
@@ -87,7 +93,6 @@ export function useChat(): UseChatReturn {
 
           for (const line of lines) {
             if (line.startsWith('event:')) {
-              const eventType = line.substring(6).trim()
               continue
             }
 
@@ -100,16 +105,19 @@ export function useChat(): UseChatReturn {
                 if (parsed.content) {
                   assistantMessage += parsed.content
 
-                  if (!stopDisplaying && assistantMessage.includes('Here is your updated schema:')) {
-                    const markerIndex = assistantMessage.indexOf('Here is your updated schema:')
-                    displayedMessage = assistantMessage.substring(0, markerIndex).trim()
+                  const markerIndex = assistantMessage.indexOf(SCHEMA_MARKER)
+
+                  if (!stopDisplaying && markerIndex !== -1) {
                     stopDisplaying = true
                     setIsGeneratingSchema(true)
                   }
 
-                  if (!stopDisplaying) {
-                    displayedMessage = assistantMessage
-                  }
+                  const contentBeforeSchema =
+                    stopDisplaying && markerIndex !== -1
+                      ? assistantMessage.substring(0, markerIndex + SCHEMA_MARKER.length).trim()
+                      : assistantMessage
+
+                  const sanitizedMessage = removeJsonCodeBlocks(contentBeforeSchema)
 
                   setMessages((prev) => {
                     const newMessages = [...prev]
@@ -118,12 +126,12 @@ export function useChat(): UseChatReturn {
                     if (lastMessage?.role === 'assistant') {
                       newMessages[newMessages.length - 1] = {
                         role: 'assistant',
-                        content: displayedMessage,
+                        content: sanitizedMessage,
                       }
                     } else {
                       newMessages.push({
                         role: 'assistant',
-                        content: displayedMessage,
+                        content: sanitizedMessage,
                       })
                     }
 

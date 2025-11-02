@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { useGraphStore } from '@/store/graphStore'
 import type { ChatMessage, ProposedSchema } from '@/hooks/useChat'
+import type { AnyLayer, GraphEdge } from '@/types/graph'
 
 interface ChatbotPanelProps {
   onViewProposal: () => void
@@ -9,7 +10,11 @@ interface ChatbotPanelProps {
   isStreaming: boolean
   isGeneratingSchema: boolean
   proposedSchema: ProposedSchema | null
-  sendMessage: (message: string, requestSchemaChange: boolean, currentSchema?: { layers: Record<string, any>, edges: any[] }) => void
+  sendMessage: (
+    message: string,
+    requestSchemaChange: boolean,
+    currentSchema?: { layers: Record<string, AnyLayer>; edges: GraphEdge[] }
+  ) => void
 }
 
 const FUNNY_LOADING_MESSAGES = [
@@ -226,7 +231,7 @@ export function ChatbotPanel({ onViewProposal, messages, isStreaming, isGenerati
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100"
           />
           <button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={!inputValue.trim() || isStreaming}
             className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors"
           >

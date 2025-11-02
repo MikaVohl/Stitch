@@ -404,7 +404,7 @@ export default function Playground() {
         <div className="absolute top-4 left-4 z-10 flex flex-col gap-4 pointer-events-none">
           <div className="flex flex-row gap-4 items-start">
             <HyperparamsPanel onParamsChange={setHyperparams} />
-            <PresetChips onPresetSelect={handlePresetSelect} />
+            <PresetChips onPresetSelect={handlePresetSelect} currentPreset={currentPreset} />
           </div>
           <LayersPanel />
         </div>

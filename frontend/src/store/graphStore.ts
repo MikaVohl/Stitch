@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { AnyLayer, GraphEdge, TensorShape } from '../types/graph'
 import { formatShape } from '../types/graph'
+import type { TrainingRequest } from '@/api/types'
 
 interface GraphState {
   layers: Record<string, AnyLayer>
@@ -253,21 +254,24 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 }))
 
 // Convert graph to backend architecture format
-type VectorShapeState = { kind: 'vector'; size: number }
-type ImageShapeState = { kind: 'image'; channels: number; height: number; width: number }
+type VectorShapeState = Extract<TensorShape, { type: 'vector' }>
+type ImageShapeState = Extract<TensorShape, { type: 'image' }>
 type ShapeState = VectorShapeState | ImageShapeState
 
 function inferImageShapeFromSize(size: number): ImageShapeState | undefined {
   const side = Math.round(Math.sqrt(size))
   if (side * side !== size) return undefined
-  return { kind: 'image', channels: 1, height: side, width: side }
+  return { type: 'image', channels: 1, height: side, width: side }
 }
 
-function ensureFlattenLayer(state: ShapeState, layers: any[]): VectorShapeState {
-  if (state.kind === 'vector') return state
+function ensureFlattenLayer(
+  state: ShapeState,
+  layers: TrainingRequest['architecture']['layers']
+): VectorShapeState {
+  if (state.type === 'vector') return state
   const flattenedSize = state.channels * state.height * state.width
   layers.push({ type: 'flatten' })
-  return { kind: 'vector', size: flattenedSize }
+  return { type: 'vector', size: flattenedSize }
 }
 
 function computeConvOutputDim(
@@ -288,7 +292,10 @@ function computePoolOutputDim(input: number, kernel: number, stride: number, pad
   return Math.max(1, Math.floor((input + 2 * padding - kernel) / effectiveStride + 1))
 }
 
-export function graphToArchitecture(layers: Record<string, AnyLayer>, edges: GraphEdge[]) {
+export function graphToArchitecture(
+  layers: Record<string, AnyLayer>,
+  edges: GraphEdge[]
+): TrainingRequest['architecture'] {
   // Build adjacency map for graph traversal
   const adjacency = new Map<string, string>()
   edges.forEach(edge => {
@@ -314,7 +321,7 @@ export function graphToArchitecture(layers: Record<string, AnyLayer>, edges: Gra
   const explicitImageShape: ImageShapeState | undefined =
     inputChannelsParam && inputHeightParam && inputWidthParam
       ? {
-          kind: 'image',
+          type: 'image',
           channels: inputChannelsParam,
           height: inputHeightParam,
           width: inputWidthParam,
@@ -328,8 +335,8 @@ export function graphToArchitecture(layers: Record<string, AnyLayer>, edges: Gra
 
   const inputSize = productSize ?? inputLayerSize
   const initialImageShape = explicitImageShape ?? inferImageShapeFromSize(inputSize)
-  let currentShape: ShapeState = initialImageShape ?? { kind: 'vector', size: inputSize }
-  const backendLayers: any[] = []
+  let currentShape: ShapeState = initialImageShape ?? { type: 'vector', size: inputSize }
+  const backendLayers: TrainingRequest['architecture']['layers'] = []
 
   // Traverse graph in topological order starting from input
   let currentId: string | undefined = inputLayer.id
@@ -355,14 +362,18 @@ export function graphToArchitecture(layers: Record<string, AnyLayer>, edges: Gra
         backendLayers.push({ type: activation })
       }
 
-      currentShape = { kind: 'vector', size: units }
+      currentShape = { type: 'vector', size: units }
     } else if (layer.kind === 'Convolution') {
-      if (currentShape.kind === 'vector') {
+      if (currentShape.type === 'vector') {
         const inferred = inferImageShapeFromSize(currentShape.size)
         if (!inferred) {
           throw new Error('Cannot infer image shape for convolution layer input')
         }
         currentShape = inferred
+      }
+
+      if (currentShape.type !== 'image') {
+        throw new Error('Expected image input for convolution layer')
       }
 
       const { filters, kernel, stride, padding, activation } = layer.params
@@ -386,18 +397,22 @@ export function graphToArchitecture(layers: Record<string, AnyLayer>, edges: Gra
       const nextWidth = computeConvOutputDim(currentShape.width, kernel, strideValue, paddingMode)
 
       currentShape = {
-        kind: 'image',
+        type: 'image',
         channels: filters,
         height: nextHeight,
         width: nextWidth,
       }
     } else if (layer.kind === 'Pooling') {
-      if (currentShape.kind === 'vector') {
+      if (currentShape.type === 'vector') {
         const inferred = inferImageShapeFromSize(currentShape.size)
         if (!inferred) {
           throw new Error('Cannot infer image shape for pooling layer input')
         }
         currentShape = inferred
+      }
+
+      if (currentShape.type !== 'image') {
+        throw new Error('Expected image input for pooling layer')
       }
 
       if (layer.params.type !== 'max') {
@@ -419,16 +434,16 @@ export function graphToArchitecture(layers: Record<string, AnyLayer>, edges: Gra
       const nextWidth = computePoolOutputDim(currentShape.width, poolSize, strideValue, paddingValue)
 
       currentShape = {
-        kind: 'image',
+        type: 'image',
         channels: currentShape.channels,
         height: nextHeight,
         width: nextWidth,
       }
     } else if (layer.kind === 'Flatten') {
       backendLayers.push({ type: 'flatten' })
-      if (currentShape.kind === 'image') {
+      if (currentShape.type === 'image') {
         const flattenedSize = currentShape.channels * currentShape.height * currentShape.width
-        currentShape = { kind: 'vector', size: flattenedSize }
+        currentShape = { type: 'vector', size: flattenedSize }
       }
     } else if (layer.kind === 'Dropout') {
       const rate = Math.min(1, Math.max(0, layer.params.rate))
@@ -448,7 +463,7 @@ export function graphToArchitecture(layers: Record<string, AnyLayer>, edges: Gra
         backendLayers.push({ type: 'softmax' })
       }
 
-      currentShape = { kind: 'vector', size: classes }
+      currentShape = { type: 'vector', size: classes }
     }
 
     // Move to next connected layer
@@ -456,7 +471,7 @@ export function graphToArchitecture(layers: Record<string, AnyLayer>, edges: Gra
     currentId = nextEdge?.target
   }
 
-  const architecture: Record<string, any> = {
+  const architecture: TrainingRequest['architecture'] = {
     input_size: inputSize,
     layers: backendLayers,
   }

@@ -3,38 +3,146 @@ import {
   ReactFlow,
   Background,
   Controls,
+  Handle,
+  Position,
   type Node,
   type Edge,
   type NodeTypes,
+  type NodeProps,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { InputLayerNode } from '@/components/nodes/InputLayerNode'
-import { DenseLayerNode } from '@/components/nodes/DenseLayerNode'
-import { ConvLayerNode } from '@/components/nodes/ConvLayerNode'
-import { OutputLayerNode } from '@/components/nodes/OutputLayerNode'
-import { PoolingLayerNode } from '@/components/nodes/PoolingLayerNode'
-import { FlattenLayerNode } from '@/components/nodes/FlattenLayerNode'
-import { DropoutLayerNode } from '@/components/nodes/DropoutLayerNode'
 import type { AnyLayer, GraphEdge, LayerKind } from '@/types/graph'
+import { formatShape } from '@/types/graph'
+
+type ChangeType = 'added' | 'removed' | 'modified' | 'unchanged'
+
+interface SchemaProposalNodeData {
+  layer: AnyLayer
+  changeType: ChangeType
+}
+
+type SchemaProposalNode = Node<SchemaProposalNodeData, 'proposal'>
+
+const layerTitles: Record<LayerKind, string> = {
+  Input: 'Input Layer',
+  Dense: 'Dense Layer',
+  Convolution: 'Convolution Layer',
+  Pooling: 'Pooling Layer',
+  Flatten: 'Flatten Layer',
+  Dropout: 'Dropout Layer',
+  Output: 'Output Layer',
+}
+
+const headerColors: Record<LayerKind, string> = {
+  Input: 'bg-red-500',
+  Dense: 'bg-blue-500',
+  Convolution: 'bg-indigo-500',
+  Pooling: 'bg-teal-500',
+  Flatten: 'bg-amber-500',
+  Dropout: 'bg-rose-500',
+  Output: 'bg-emerald-500',
+}
+
+const changeBadgeStyles: Record<ChangeType, string> = {
+  added: 'bg-green-100 text-green-700 border-green-200',
+  removed: 'bg-red-100 text-red-700 border-red-200',
+  modified: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  unchanged: 'bg-gray-100 text-gray-600 border-gray-200',
+}
+
+function describeLayer(layer: AnyLayer): Array<{ label: string; value: string }> {
+  switch (layer.kind) {
+    case 'Input':
+      return [
+        { label: 'Size', value: `${layer.params.size}` },
+        layer.params.channels && layer.params.height && layer.params.width
+          ? {
+            label: 'Shape',
+            value: `${layer.params.channels}×${layer.params.height}×${layer.params.width}`,
+          }
+          : { label: 'Shape', value: 'Vector' },
+      ]
+    case 'Dense':
+      return [
+        { label: 'Units', value: `${layer.params.units}` },
+        { label: 'Activation', value: layer.params.activation },
+      ]
+    case 'Convolution':
+      return [
+        { label: 'Filters', value: `${layer.params.filters}` },
+        { label: 'Kernel', value: `${layer.params.kernel}×${layer.params.kernel}` },
+        { label: 'Stride', value: `${layer.params.stride}` },
+        { label: 'Padding', value: layer.params.padding },
+        { label: 'Activation', value: layer.params.activation },
+      ]
+    case 'Pooling':
+      return [
+        { label: 'Type', value: layer.params.type },
+        { label: 'Pool', value: `${layer.params.pool_size}` },
+        { label: 'Stride', value: `${layer.params.stride}` },
+      ]
+    case 'Flatten':
+      return [{ label: 'Operation', value: 'Flatten tensor' }]
+    case 'Dropout':
+      return [{ label: 'Rate', value: `${layer.params.rate}` }]
+    case 'Output':
+      return [
+        { label: 'Classes', value: `${layer.params.classes}` },
+        { label: 'Activation', value: layer.params.activation },
+      ]
+    default:
+      return []
+  }
+}
+
+function SchemaProposalNodeView({ data }: NodeProps<SchemaProposalNode>) {
+  const layer = data?.layer
+  if (!layer) return null
+
+  const changeType = data.changeType ?? 'unchanged'
+
+  return (
+    <>
+      <Handle type="target" position={Position.Left} />
+      <div className="relative bg-white border border-gray-200 rounded-xl shadow-md overflow-hidden min-w-[180px]">
+        <div className={`px-3 py-1.5 text-xs font-semibold text-white ${headerColors[layer.kind]}`}>
+          {layerTitles[layer.kind]}
+        </div>
+
+        <div className="absolute top-2 right-2">
+          <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${changeBadgeStyles[changeType]}`}>
+            {changeType.charAt(0).toUpperCase() + changeType.slice(1)}
+          </span>
+        </div>
+
+        <div className="p-3 space-y-1.5 text-xs text-gray-700">
+          {describeLayer(layer).map((item) => (
+            <div key={item.label}>
+              <span className="font-medium">{item.label}:</span> {item.value}
+            </div>
+          ))}
+          <div className="pt-1 text-gray-600">
+            <span className="font-medium">Output:</span> {formatShape(layer.shapeOut)}
+          </div>
+        </div>
+      </div>
+      <Handle type="source" position={Position.Right} />
+    </>
+  )
+}
 
 const nodeTypes: NodeTypes = {
-  input: InputLayerNode,
-  dense: DenseLayerNode,
-  conv: ConvLayerNode,
-  pool: PoolingLayerNode,
-  flatten: FlattenLayerNode,
-  dropout: DropoutLayerNode,
-  output: OutputLayerNode,
+  proposal: SchemaProposalNodeView,
 }
 
 const layerKindToNodeType: Record<LayerKind, keyof typeof nodeTypes> = {
-  Input: 'input',
-  Dense: 'dense',
-  Convolution: 'conv',
-  Pooling: 'pool',
-  Flatten: 'flatten',
-  Dropout: 'dropout',
-  Output: 'output',
+  Input: 'proposal',
+  Dense: 'proposal',
+  Convolution: 'proposal',
+  Pooling: 'proposal',
+  Flatten: 'proposal',
+  Dropout: 'proposal',
+  Output: 'proposal',
 }
 
 interface SchemaProposalPreviewProps {
@@ -45,8 +153,6 @@ interface SchemaProposalPreviewProps {
   onApply: () => void
   onReject: () => void
 }
-
-type ChangeType = 'added' | 'removed' | 'modified' | 'unchanged'
 
 export function SchemaProposalPreview({
   currentLayers,
@@ -96,19 +202,20 @@ export function SchemaProposalPreview({
       }
     }
 
-    const createNodes = (
-      layers: Record<string, AnyLayer>,
-      isProposed: boolean
-    ): Node[] => {
+    const createNodes = (layers: Record<string, AnyLayer>): Node[] => {
       return Object.values(layers).map((layer, index) => {
         const changeType = layerChanges.get(layer.id) || 'unchanged'
         const borderColor = getNodeColor(changeType)
+        const nodeType = layerKindToNodeType[layer.kind]
 
         return {
           id: layer.id,
-          type: layerKindToNodeType[layer.kind],
+          type: nodeType,
           position: layer.position ?? { x: index * 300 + 50, y: 250 },
-          data: {},
+          data: {
+            layer,
+            changeType,
+          },
           draggable: false,
           style: {
             background: 'transparent',
@@ -121,20 +228,27 @@ export function SchemaProposalPreview({
       })
     }
 
-    const currentNodes = createNodes(currentLayers, false)
-    const proposedNodes = createNodes(proposedLayers, true)
+    const currentNodes = createNodes(currentLayers)
+    const proposedNodes = createNodes(proposedLayers)
 
     return { currentNodes, proposedNodes }
   }, [currentLayers, proposedLayers])
 
   const { currentReactFlowEdges, proposedReactFlowEdges } = useMemo(() => {
+    const sanitizeHandle = (handle?: string | null): string | undefined => {
+      if (handle == null) return undefined
+      const trimmed = String(handle).trim()
+      if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return undefined
+      return trimmed
+    }
+
     const createEdges = (edges: GraphEdge[]): Edge[] => {
       return edges.map((edge) => ({
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        sourceHandle: edge.sourceHandle ?? undefined,
-        targetHandle: edge.targetHandle ?? undefined,
+        sourceHandle: sanitizeHandle(edge.sourceHandle),
+        targetHandle: sanitizeHandle(edge.targetHandle),
         label: edge.label,
         animated: true,
       }))
@@ -147,7 +261,7 @@ export function SchemaProposalPreview({
   }, [currentEdges, proposedEdges])
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-8">
+    <div className="fixed inset-0 bg-black bg-opacity-30 z-50 flex items-center justify-center p-8">
       <div className="bg-white rounded-xl shadow-2xl w-full h-full max-w-7xl flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-gray-200">
@@ -224,13 +338,13 @@ export function SchemaProposalPreview({
         <div className="p-6 border-t border-gray-200 flex justify-end gap-4">
           <button
             onClick={onReject}
-            className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold rounded-lg transition-colors"
+            className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold rounded-lg transition-colors cursor-pointer"
           >
             Reject
           </button>
           <button
             onClick={onApply}
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors cursor-pointer"
           >
             Apply Changes
           </button>
