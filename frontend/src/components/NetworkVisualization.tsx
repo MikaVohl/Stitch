@@ -18,6 +18,7 @@ import type { StoredLayer } from '@/hooks/useModels'
 const MNIST_SIDE = 28
 const HORIZONTAL_SPACING = 320
 const VERTICAL_SPACING = 72
+const OUTPUT_VERTICAL_SPACING = 112
 const SAMPLE_FACTOR = 8
 const CONV_ROW_SPACING = 48
 const CONV_COL_X_SHIFT = 28
@@ -201,18 +202,21 @@ function buildNodesAndEdges(
       const displayCount = isLast
         ? neuronCount
         : Math.max(1, Math.ceil(neuronCount / SAMPLE_FACTOR))
-      const yOffset = ((displayCount - 1) * VERTICAL_SPACING) / 2
+      const spacing = isLast ? OUTPUT_VERTICAL_SPACING : VERTICAL_SPACING
+      const yOffset = ((displayCount - 1) * spacing) / 2
 
       for (let i = 0; i < displayCount; i++) {
         const nodeId = `layer-${renderIndex}-${i}`
         currentIds.push(nodeId)
 
+        const nodeType = isLast ? 'outputNeuron' : 'neuron'
+
         nodes.push({
           id: nodeId,
-          type: 'neuron',
+          type: nodeType,
           position: {
             x: renderIndex * HORIZONTAL_SPACING,
-            y: i * VERTICAL_SPACING - yOffset,
+            y: i * spacing - yOffset,
           },
           data: {
             layerIndex: renderIndex,
@@ -325,30 +329,44 @@ function NeuronNode(props: NodeProps) {
   const highlighted = !!data.highlighted
 
   const baseClasses =
-    'relative flex h-12 w-12 items-center justify-center rounded-full border-2 shadow-sm transition-colors'
+    'relative flex h-12 w-12 items-center justify-center rounded-full border-4 shadow-sm transition-colors text-sm'
   const visualClasses = highlighted
     ? 'border-blue-500 bg-blue-100 text-blue-900 ring-2 ring-blue-200'
-    : 'border-slate-300 bg-white text-slate-700'
+    : 'border-orange-300 bg-white text-slate-700'
 
   return (
     <div className={`${baseClasses} ${visualClasses}`}>
-      {!data.isOutput && (
-        <Handle
-          type="source"
-          position={Position.Right}
-          className={`h-2.5! w-2.5! border-0! ${highlighted ? 'bg-blue-400!' : 'bg-orange-300!'}`}
-        />
-      )}
+      <Handle
+        type="source"
+        position={Position.Right}
+        className={`h-2.5! w-2.5! border-0! ${highlighted ? 'bg-blue-400!' : 'bg-orange-300!'}`}
+      />
       <Handle
         type="target"
         position={Position.Left}
         className={`h-2.5! w-2.5! border-0! ${highlighted ? 'bg-blue-400!' : 'bg-orange-300!'}`}
       />
-      {data.isOutput && (
-        <span className="text-sm font-semibold">
-          {Math.min(9, Math.max(0, data.sampledIndex)).toString()}
-        </span>
-      )}
+    </div>
+  )
+}
+
+function OutputNeuronNode(props: NodeProps) {
+  const data = props.data as NeuronNodeData
+  const highlighted = !!data.highlighted
+  const baseClasses =
+    'relative flex h-24 w-24 items-center  justify-center rounded-full border-4 shadow-md transition-colors text-2xl font-semibold'
+  const visualClasses = highlighted
+    ? 'border-blue-500 bg-blue-100 text-blue-900 ring-2 ring-blue-200'
+    : 'border-slate-400 bg-white text-slate-800'
+
+  return (
+    <div className={`${baseClasses} ${visualClasses}`}>
+      <Handle
+        type="target"
+        position={Position.Left}
+        className={`!h-3 !w-3 !border-0 ${highlighted ? '!bg-blue-500' : '!bg-slate-500'}`}
+      />
+      <span>{Math.min(9, Math.max(0, data.sampledIndex)).toString()}</span>
     </div>
   )
 }
@@ -412,6 +430,7 @@ const nodeTypes: NodeTypes = {
   neuron: NeuronNode,
   inputNeuron: InputNeuronNode,
   convNeuron: ConvNeuronNode,
+  outputNeuron: OutputNeuronNode,
   operation: OperationNode,
 }
 
@@ -447,7 +466,6 @@ export function NetworkVisualization({ layers, currentDrawing, activeOutput }: N
           style={{ width: '100%', left: '50%', transform: 'translate(-50%, 0)' }}
         >
           <div className="pointer-events-auto flex w-full flex-col rounded-xl border border-slate-200 bg-white/95 px-6 py-3 text-xs text-slate-600 shadow-sm backdrop-blur">
-            <p className="text-center text-sm font-semibold text-slate-900">Legend</p>
             <p className="text-center text-xs font-light italic text-slate-400">Each node represents 8 neurons</p>
 
             <ul className="mt-2 grid grid-cols-2 gap-x-4 justify-items-center gap-y-1 sm:grid-cols-4 lg:grid-cols-5">
