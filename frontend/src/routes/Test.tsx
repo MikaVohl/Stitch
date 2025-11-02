@@ -167,12 +167,12 @@ export default function Test() {
                       ))}
                     </select>
                   </label>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {/* <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Using latest successful run
                     <p className="mt-1 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-800 shadow-inner">
                       {latestRunId ? latestRunId : 'No successful runs available'}
                     </p>
-                  </label>
+                  </label> */}
                   <button
                     onClick={handleInference}
                     disabled={!selectedModelId || !latestRunId || !flattenedPixels || isRunning}
