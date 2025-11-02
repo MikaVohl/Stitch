@@ -16,9 +16,9 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <header className="h-16 border-b border-gray-200 bg-white shadow-sm">
-            <div className="h-full max-w-7xl mx-auto px-4 flex items-center gap-8">
-              <h1 className="text-xl flex items-center gap-2 font-bold text-gray-900"><img src="/Group 9.svg" alt="" className="h-4 w-14" />NETBURGER</h1>
-              <nav className="flex gap-4 text-sm font-medium">
+            <div className="h-full grid grid-cols-3 max-w-7xl mx-auto px-4 flex gap-8">
+              <h1 className="text-xl flex items-center gap-2 font-bold text-gray-900"><img src="/Group 9.svg" alt="" className="h-4 w-14" />NETBURGER™</h1>
+              <nav className="flex gap-4 text-sm justify-center font-medium">
                 <NavLink
                   to="/playground"
                   className="flex items-center gap-2"
