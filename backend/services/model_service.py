@@ -6,7 +6,11 @@ from torch.utils.data import Subset
 from torchvision import datasets, transforms
 from pathlib import Path
 
-from backend.utils.validation import DEFAULT_HYPERPARAMS, MNIST_INPUT_SIZE
+from utils.validation import DEFAULT_HYPERPARAMS, MNIST_INPUT_SIZE
+
+
+BACKEND_DIR = Path(__file__).resolve().parent
+MNIST_DATA_ROOT = BACKEND_DIR / "data" / "mnist"
 
 
 BACKEND_DIR = Path(__file__).resolve().parent
