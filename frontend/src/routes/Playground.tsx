@@ -365,7 +365,10 @@ export default function Playground() {
   const handleRun = useCallback(() => {
     try {
       // Convert graph to backend architecture format
-      const architecture = graphToArchitecture(layers, edges)
+      const architecture = graphToArchitecture(layers, edges) as {
+        input_size: number
+        layers: { type: string; in?: number | undefined; out?: number | undefined }[]
+      }
 
       console.log('🚀 Starting training with architecture:', architecture)
       console.log('📊 Hyperparameters:', hyperparams)

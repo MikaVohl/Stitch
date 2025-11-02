@@ -76,19 +76,22 @@ export default function ModelPage() {
 }
 
 function RunDetails({ run }: { run: TrainingRun }) {
-  const stateColors = {
+  const stateColors: Record<string, string> = {
     queued: 'bg-yellow-50 text-yellow-700 border-yellow-200',
     running: 'bg-blue-50 text-blue-700 border-blue-200',
     succeeded: 'bg-green-50 text-green-700 border-green-200',
     failed: 'bg-red-50 text-red-700 border-red-200',
+    cancelled: 'bg-gray-50 text-gray-700 border-gray-200',
   };
+
+  const badgeClass = stateColors[run.state] ?? 'bg-gray-50 text-gray-700 border-gray-200';
 
   return (
     <div className="border-l-4 pl-4 py-2">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium border ${stateColors[run.state]}`}>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium border ${badgeClass}`}>
               {run.state}
             </span>
             <span className="text-sm font-mono text-gray-600">{run.run_id}</span>

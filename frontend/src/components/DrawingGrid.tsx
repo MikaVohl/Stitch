@@ -35,32 +35,7 @@ export function DrawingGrid({ width = 28, height = 28, onDrawingComplete }: Draw
     setContext(ctx)
   }, [width, height])
 
-  const startDrawing = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
-    setIsDrawing(true)
-    draw(event)
-  }, [])
-
-  const stopDrawing = useCallback(() => {
-    setIsDrawing(false)
-    
-    if (onDrawingComplete && context) {
-      const imageData = context.getImageData(0, 0, width, height)
-      const pixels: number[][] = []
-      
-      for (let y = 0; y < height; y++) {
-        pixels[y] = []
-        for (let x = 0; x < width; x++) {
-          const i = (y * width + x) * 4
-          // Convert to grayscale value between 0 and 1
-          pixels[y][x] = (255 - imageData.data[i]) / 255
-        }
-      }
-      
-      onDrawingComplete(pixels)
-    }
-  }, [context, width, height, onDrawingComplete])
-
-  const draw = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+    const draw = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing || !context || !canvasRef.current) return
 
     const rect = canvasRef.current.getBoundingClientRect()
@@ -72,6 +47,32 @@ export function DrawingGrid({ width = 28, height = 28, onDrawingComplete }: Draw
 
     context.fillRect(x - 1, y - 1, 2, 2)
   }, [isDrawing, context, width, height])
+
+  const startDrawing = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+    setIsDrawing(true)
+    draw(event)
+  }, [draw])
+
+  const stopDrawing = useCallback(() => {
+    setIsDrawing(false)
+    
+    if (onDrawingComplete && context) {
+      const imageData = context.getImageData(0, 0, width, height)
+      const pixels: number[][] = []
+      
+      for (let y = 0; y < height; y++) {
+        pixels[y] = []
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4
+        pixels[y][x] = imageData.data[i]
+      }
+      }
+      
+      onDrawingComplete(pixels)
+    }
+  }, [context, width, height, onDrawingComplete])
+
+
 
   const clearCanvas = useCallback(() => {
     if (!context) return
