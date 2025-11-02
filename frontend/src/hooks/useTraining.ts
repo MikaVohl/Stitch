@@ -1,8 +1,12 @@
 import { useMutation } from '@tanstack/react-query'
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { startTraining, subscribeToTrainingEvents, cancelTraining } from '@/api/training'
 import type { TrainingRequest, MetricData, TrainingState, MnistSample } from '@/api/types'
 import { toast } from 'sonner'
+import { useTrainingStateStore } from '@/store/trainingStateStore'
+
+const EMPTY_METRICS: MetricData[] = []
+const EMPTY_PREDICTIONS: MnistSample[] = []
 
 export function useStartTraining() {
   return useMutation({
@@ -22,6 +26,8 @@ interface UseTrainingMetricsReturn {
   runId: string | undefined
   testAccuracy: number | undefined
   samplePredictions: MnistSample[]
+  lastRunArchitecture: TrainingRequest['architecture'] | undefined
+  lastRunHyperparams: TrainingRequest['hyperparams'] | undefined
   startTraining: (request: TrainingRequest) => void
   resetMetrics: () => void
   cancelTraining: () => Promise<void>
@@ -29,23 +35,38 @@ interface UseTrainingMetricsReturn {
 }
 
 export function useTrainingMetrics(): UseTrainingMetricsReturn {
-  const [metrics, setMetrics] = useState<MetricData[]>([])
-  const [currentState, setCurrentState] = useState<TrainingState['state'] | null>(null)
+  const currentState = useTrainingStateStore((state) => state.currentState)
+  const setTrainingState = useTrainingStateStore((state) => state.setCurrentState)
+  const metrics = useTrainingStateStore((state) => state.lastRun?.metrics ?? EMPTY_METRICS)
+  const testAccuracy = useTrainingStateStore((state) => state.lastRun?.testAccuracy)
+  const samplePredictions = useTrainingStateStore((state) => state.lastRun?.samplePredictions ?? EMPTY_PREDICTIONS)
+  const initializeRun = useTrainingStateStore((state) => state.initializeRun)
+  const appendMetric = useTrainingStateStore((state) => state.appendMetric)
+  const setRunIdInStore = useTrainingStateStore((state) => state.setRunId)
+  const setRunResult = useTrainingStateStore((state) => state.setRunResult)
+  const clearRun = useTrainingStateStore((state) => state.clearRun)
+  const lastRunArchitecture = useTrainingStateStore((state) => state.lastRun?.architecture)
+  const lastRunHyperparams = useTrainingStateStore((state) => state.lastRun?.hyperparams)
+  const lastRunRunId = useTrainingStateStore((state) => state.lastRun?.runId)
+
   const [isTraining, setIsTraining] = useState(false)
-  const [runId, setRunId] = useState<string | undefined>(undefined)
-  const [testAccuracy, setTestAccuracy] = useState<number | undefined>(undefined)
-  const [samplePredictions, setSamplePredictions] = useState<MnistSample[]>([])
+  const [runId, setRunId] = useState<string | undefined>(lastRunRunId)
   const [isCancelling, setIsCancelling] = useState(false)
   const eventSourceCleanupRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    if (!runId && lastRunRunId) {
+      setRunId(lastRunRunId)
+    }
+  }, [runId, lastRunRunId])
 
   const startTrainingMutation = useStartTraining()
 
   const resetMetrics = useCallback(() => {
-    setMetrics([])
-    setCurrentState(null)
-    setTestAccuracy(undefined)
-    setSamplePredictions([])
-  }, [])
+    setTrainingState(null)
+    clearRun()
+    setRunId(undefined)
+  }, [clearRun, setTrainingState])
 
   const handleStartTraining = useCallback(
     (request: TrainingRequest) => {
@@ -56,30 +77,35 @@ export function useTrainingMetrics(): UseTrainingMetricsReturn {
 
       setIsTraining(true)
       resetMetrics()
-      setSamplePredictions([])
+      initializeRun({
+        architecture: request.architecture,
+        hyperparams: request.hyperparams,
+      })
 
       startTrainingMutation.mutate(request, {
         onSuccess: (data) => {
           setRunId(data.run_id)
+          setRunIdInStore(data.run_id)
           console.log('✅ Training job created:', data)
           toast.success('Training started!', {
             description: `Run ID: ${data.run_id}`,
           })
 
-          // Subscribe to SSE events
           console.log('🔌 Connecting to event stream:', data.events_url)
           const cleanup = subscribeToTrainingEvents(data.events_url, {
             onMetric: (metricData) => {
               console.log('📈 Metric:', metricData)
-              setMetrics((prev) => [...prev, metricData])
+              appendMetric(metricData)
             },
             onState: (stateData) => {
               console.log('🔄 State:', stateData)
-              setCurrentState(stateData.state)
+              setTrainingState(stateData.state)
 
               if (stateData.state === 'succeeded') {
-                setTestAccuracy(stateData.test_accuracy)
-                setSamplePredictions(stateData.sample_predictions ?? [])
+                setRunResult({
+                  testAccuracy: stateData.test_accuracy,
+                  samplePredictions: stateData.sample_predictions ?? [],
+                })
                 toast.success('Training completed!', {
                   description: stateData.test_accuracy
                     ? `Test accuracy: ${(stateData.test_accuracy * 100).toFixed(2)}%`
@@ -94,7 +120,7 @@ export function useTrainingMetrics(): UseTrainingMetricsReturn {
                 toast.error('Training failed', {
                   description: stateData.error || 'Unknown error',
                 })
-                setSamplePredictions([])
+                setRunResult({ samplePredictions: [] })
                 setIsTraining(false)
                 if (eventSourceCleanupRef.current) {
                   eventSourceCleanupRef.current()
@@ -104,7 +130,7 @@ export function useTrainingMetrics(): UseTrainingMetricsReturn {
                 toast.info('Training cancelled', {
                   description: 'Your training run has been stopped.',
                 })
-                setSamplePredictions([])
+                setRunResult({ samplePredictions: [] })
                 setIsTraining(false)
                 if (eventSourceCleanupRef.current) {
                   eventSourceCleanupRef.current()
@@ -132,7 +158,7 @@ export function useTrainingMetrics(): UseTrainingMetricsReturn {
         },
       })
     },
-    [isTraining, resetMetrics, startTrainingMutation]
+    [appendMetric, initializeRun, isTraining, resetMetrics, setRunIdInStore, setRunResult, setTrainingState, startTrainingMutation]
   )
 
   const cancelActiveTraining = useCallback(async () => {
@@ -166,7 +192,12 @@ export function useTrainingMetrics(): UseTrainingMetricsReturn {
     }
   }, [runId, isTraining, currentState, isCancelling])
 
-  // Cleanup on unmount
+  useEffect(() => {
+    if (!isTraining && !runId && metrics.length === 0) {
+      setTrainingState(null)
+    }
+  }, [isTraining, runId, metrics.length, setTrainingState])
+
   useEffect(() => {
     return () => {
       if (eventSourceCleanupRef.current) {
@@ -182,6 +213,8 @@ export function useTrainingMetrics(): UseTrainingMetricsReturn {
     runId,
     testAccuracy,
     samplePredictions,
+    lastRunArchitecture,
+    lastRunHyperparams,
     startTraining: handleStartTraining,
     resetMetrics,
     cancelTraining: cancelActiveTraining,

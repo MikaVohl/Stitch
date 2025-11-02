@@ -28,7 +28,7 @@ export function InputLayerNode({ id }: NodeProps) {
         type="source"
         position={Position.Right}
         id="output"
-        className="bg-indigo-500! size-5! border-2! border-white!"
+        className="bg-indigo-500! size-5! border-2! border-white! left-[139px]"
       />
     </div>
   );

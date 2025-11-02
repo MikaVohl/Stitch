@@ -230,11 +230,21 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   }),
 
   applyProposedSchema: (schema) => {
-    set({
-      layers: schema.layers,
-      edges: schema.edges
+    get().clearGraph()
+    Object.values(schema.layers).forEach((layer) => {
+      get().addLayer({
+        ...layer,
+        params: { ...layer.params },
+        position: layer.position ? { ...layer.position } : undefined,
+      })
     })
-    get().recomputeShapes()
+    schema.edges.forEach((edge) => {
+      get().addEdge({
+        ...edge,
+        sourceHandle: edge.sourceHandle ?? null,
+        targetHandle: edge.targetHandle ?? null,
+      })
+    })
   },
 
   clearGraph: () => {
@@ -245,11 +255,30 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   },
 
   loadGraph: (layers, edges) => {
+    const normalizedLayers = Object.values(layers).map((layer) => ({
+      ...layer,
+      params: { ...layer.params },
+      position: layer.position ? { ...layer.position } : undefined,
+    }))
+
+    const normalizedEdges = edges.map((edge) => ({
+      ...edge,
+      sourceHandle: edge.sourceHandle ?? null,
+      targetHandle: edge.targetHandle ?? null,
+    })) as GraphEdge[]
+
     set({
-      layers,
-      edges
+      layers: {},
+      edges: [],
     })
-    get().recomputeShapes()
+
+    normalizedLayers.forEach((layer) => {
+      get().addLayer(layer)
+    })
+
+    normalizedEdges.forEach((edge) => {
+      get().addEdge(edge)
+    })
   }
 }))
 
