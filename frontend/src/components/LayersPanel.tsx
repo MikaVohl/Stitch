@@ -1,19 +1,20 @@
 import { useState } from 'react'
 import clsx from 'clsx'
+import Tippy from '@tippyjs/react'
+import 'tippy.js/dist/tippy.css'
+import 'tippy.js/themes/light-border.css'
+import { Info } from 'lucide-react'
 import type { DragEvent } from 'react'
 import type { ActivationType } from '@/types/graph'
 
+// --- Types ---
 type DenseTemplate = {
   id: string
   label: string
   description: string
   kind: 'Dense'
-  params: {
-    units: number
-    activation: ActivationType
-  }
+  params: { units: number; activation: ActivationType }
 }
-
 type ConvTemplate = {
   id: string
   label: string
@@ -27,7 +28,6 @@ type ConvTemplate = {
     activation: Exclude<ActivationType, 'softmax'>
   }
 }
-
 type FlattenTemplate = {
   id: string
   label: string
@@ -35,19 +35,16 @@ type FlattenTemplate = {
   kind: 'Flatten'
   params: Record<string, never>
 }
-
 type DropoutTemplate = {
   id: string
   label: string
   description: string
   kind: 'Dropout'
-  params: {
-    rate: number
-  }
+  params: { rate: number }
 }
-
 type LayerTemplate = DenseTemplate | ConvTemplate | FlattenTemplate | DropoutTemplate
 
+// --- Styles ---
 const TEMPLATE_STYLES: Record<
   LayerTemplate['kind'],
   {
@@ -56,6 +53,8 @@ const TEMPLATE_STYLES: Record<
     hover: string
     label: string
     description: string
+    icon: string
+    iconHover: string
   }
 > = {
   Dense: {
@@ -64,6 +63,8 @@ const TEMPLATE_STYLES: Record<
     hover: 'hover:bg-blue-100',
     label: 'text-blue-700',
     description: 'text-blue-600',
+    icon: 'text-blue-600',
+    iconHover: 'hover:text-blue-800',
   },
   Convolution: {
     border: 'border-indigo-300',
@@ -71,6 +72,8 @@ const TEMPLATE_STYLES: Record<
     hover: 'hover:bg-indigo-100',
     label: 'text-indigo-700',
     description: 'text-indigo-600',
+    icon: 'text-indigo-600',
+    iconHover: 'hover:text-indigo-800',
   },
   Flatten: {
     border: 'border-yellow-300',
@@ -78,6 +81,8 @@ const TEMPLATE_STYLES: Record<
     hover: 'hover:bg-yellow-100',
     label: 'text-yellow-700',
     description: 'text-yellow-600',
+    icon: 'text-yellow-600',
+    iconHover: 'hover:text-yellow-800',
   },
   Dropout: {
     border: 'border-orange-300',
@@ -85,59 +90,115 @@ const TEMPLATE_STYLES: Record<
     hover: 'hover:bg-orange-100',
     label: 'text-orange-700',
     description: 'text-orange-600',
+    icon: 'text-orange-600',
+    iconHover: 'hover:text-orange-800',
   },
 }
 
-const DENSE_LAYER_TEMPLATE: DenseTemplate = {
-  id: 'dense-layer',
-  label: 'Dense Layer',
-  description: 'Fully connected linear layer',
-  kind: 'Dense',
-  params: {
-    units: 64,
-    activation: 'relu',
-  },
-}
-
-const CONV_LAYER_TEMPLATE: ConvTemplate = {
-  id: 'conv-layer',
-  label: 'Conv Layer',
-  description: '2D convolutional layer',
-  kind: 'Convolution',
-  params: {
-    filters: 32,
-    kernel: 3,
-    stride: 1,
-    padding: 'same',
-    activation: 'relu',
-  },
-}
-
-const FLATTEN_LAYER_TEMPLATE: FlattenTemplate = {
-  id: 'flatten-layer',
-  label: 'Flatten',
-  description: 'Convert image features into a vector',
-  kind: 'Flatten',
-  params: {},
-}
-
-const DROPOUT_LAYER_TEMPLATE: DropoutTemplate = {
-  id: 'dropout-layer',
-  label: 'Dropout',
-  description: 'Randomly drop a fraction of activations',
-  kind: 'Dropout',
-  params: {
-    rate: 0.2,
-  },
-}
-
+// --- Templates ---
 const LAYER_TEMPLATES: LayerTemplate[] = [
-  DENSE_LAYER_TEMPLATE,
-  CONV_LAYER_TEMPLATE,
-  FLATTEN_LAYER_TEMPLATE,
-  DROPOUT_LAYER_TEMPLATE,
+  {
+    id: 'dense-layer',
+    label: 'Dense Layer',
+    description: 'Fully connected layer connecting all inputs to all outputs.',
+    kind: 'Dense',
+    params: { units: 64, activation: 'relu' },
+  },
+  {
+    id: 'conv-layer',
+    label: 'Conv Layer',
+    description: 'Applies 2D convolution operations to extract spatial features.',
+    kind: 'Convolution',
+    params: { filters: 32, kernel: 3, stride: 1, padding: 'same', activation: 'relu' },
+  },
+  {
+    id: 'flatten-layer',
+    label: 'Flatten',
+    description: 'Converts multi-dimensional features into a single vector.',
+    kind: 'Flatten',
+    params: {},
+  },
+  {
+    id: 'dropout-layer',
+    label: 'Dropout',
+    description: 'Randomly drops a fraction of neurons during training to prevent overfitting.',
+    kind: 'Dropout',
+    params: { rate: 0.2 },
+  },
 ]
 
+// --- Tooltip content generator ---
+function getTooltipContent(template: LayerTemplate) {
+  switch (template.kind) {
+    case 'Dense':
+      return (
+        <div className="max-w-[250px] text-sm">
+          <p>
+            A <b>Dense layer</b> connects every input neuron to every output neuron.
+            Commonly used for classification.
+          </p>
+          <a
+            href="https://keras.io/api/layers/core_layers/dense/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 underline mt-2 inline-block"
+          >
+            Learn more → Keras Dense
+          </a>
+        </div>
+      )
+    case 'Convolution':
+      return (
+        <div className="max-w-[250px] text-sm">
+          <p>
+            A <b>Conv layer</b> detects spatial patterns using filters and kernels — ideal for image data.
+          </p>
+          <a
+            href="https://keras.io/api/layers/convolution_layers/convolution2d/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-indigo-500 underline mt-2 inline-block"
+          >
+            Learn more → Keras Conv2D
+          </a>
+        </div>
+      )
+    case 'Flatten':
+      return (
+        <div className="max-w-[250px] text-sm">
+          <p>
+            <b>Flatten</b> reshapes tensors into 1D for feeding into dense layers.
+          </p>
+          <a
+            href="https://keras.io/api/layers/reshaping_layers/flatten/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-yellow-600 underline mt-2 inline-block"
+          >
+            Learn more → Keras Flatten
+          </a>
+        </div>
+      )
+    case 'Dropout':
+      return (
+        <div className="max-w-[250px] text-sm">
+          <p>
+            <b>Dropout</b> randomly drops neurons during training to prevent overfitting.
+          </p>
+          <a
+            href="https://keras.io/api/layers/regularization_layers/dropout/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-orange-500 underline mt-2 inline-block"
+          >
+            Learn more → Keras Dropout
+          </a>
+        </div>
+      )
+  }
+}
+
+// --- Drag Handler ---
 function createDragStartHandler(template: LayerTemplate) {
   return (event: DragEvent<HTMLDivElement>) => {
     event.dataTransfer.effectAllowed = 'copy'
@@ -151,6 +212,7 @@ function createDragStartHandler(template: LayerTemplate) {
   }
 }
 
+// --- Main Component ---
 export function LayersPanel({ className }: { className?: string }) {
   const [isOpen, setIsOpen] = useState(true)
 
@@ -175,11 +237,11 @@ export function LayersPanel({ className }: { className?: string }) {
         </svg>
       </button>
 
-      {/* Collapsible content */}
+      {/* Content */}
       {isOpen && (
-        <div className="p-4 flex flex-col gap-3 min-w-[280px]">
+        <div className="p-2 flex flex-col gap-3 min-w-[280px]">
           <p className="text-xs text-gray-500">
-            Drag a preset onto the canvas, then tune the settings inline.
+            Drag a preset onto the canvas, then adjust its parameters.
           </p>
 
           {LAYER_TEMPLATES.map((template) => {
@@ -190,13 +252,33 @@ export function LayersPanel({ className }: { className?: string }) {
                 draggable
                 onDragStart={createDragStartHandler(template)}
                 className={clsx(
-                  'border border-dashed rounded-lg px-3 py-2 cursor-grab active:cursor-grabbing transition-colors',
+                  'flex flex-col border border-dashed rounded-lg px-3 py-2 cursor-grab active:cursor-grabbing transition-colors',
                   style.border,
                   style.background,
                   style.hover
                 )}
               >
-                <div className={`text-sm font-semibold ${style.label}`}>{template.label}</div>
+                <div className="flex items-center gap-1">
+                  <div className={`text-sm font-semibold ${style.label}`}>{template.label}</div>
+                  <Tippy
+                    content={getTooltipContent(template)}
+                    placement="top"
+                    theme="light-border"
+                    interactive={true}
+                    maxWidth={300}
+                  >
+                    <button
+                      className={clsx(
+                        'focus:outline-none transition-colors',
+                        style.icon,
+                        style.iconHover
+                      )}
+                      aria-label={`Info about ${template.label}`}
+                    >
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  </Tippy>
+                </div>
                 <div className={`text-xs ${style.description}`}>{template.description}</div>
               </div>
             )
