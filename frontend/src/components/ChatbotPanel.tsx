@@ -41,7 +41,7 @@ const SUGGESTED_PROMPTS = [
 ]
 
 export function ChatbotPanel({ onViewProposal, messages, isStreaming, isGeneratingSchema, proposedSchema, sendMessage, clearMessages }: ChatbotPanelProps) {
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)

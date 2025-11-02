@@ -189,7 +189,7 @@ function createDragStartHandler(template: LayerTemplate) {
 
 // --- Component ---
 export function LayersPanel({ className }: { className?: string }) {
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(false)
 
   return (
     <div

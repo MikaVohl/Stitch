@@ -35,7 +35,7 @@ export function HyperparamsPanel({
   className?: string
 }) {
   const [params, setParams] = useState<Hyperparams>(DEFAULT_HYPERPARAMS)
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(false)
 
   const updateParam = <K extends keyof Hyperparams>(key: K, value: Hyperparams[K]) => {
     const updated = { ...params, [key]: value }
