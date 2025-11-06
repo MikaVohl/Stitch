@@ -6,6 +6,8 @@ Stitch lets users drag and drop neural network components to build their own mod
 
 ![Stitch Demo](Stitch.png)
 
+Check out the [Devpost](https://devpost.com/software/stitch-60vxhj) page!
+
 ## At a Glance
 
 - **Frontend**: React 19 + Vite + Tailwind + React Flow for rich network visualizations.
