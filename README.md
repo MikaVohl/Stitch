@@ -6,6 +6,20 @@ Stitch lets users drag and drop neural network components to build their own mod
 
 ![Stitch Demo](Stitch.png)
 
+
+<details open>
+<summary>Some project demos</summary>
+
+<br/>
+
+https://github.com/user-attachments/assets/76c64938-8d4b-4777-9c71-da08a28c275f
+
+https://github.com/user-attachments/assets/25dc1bfb-97b5-47cb-adf6-0ad0ade2a891
+
+https://github.com/user-attachments/assets/ff7f826a-e24c-4a10-b5f4-20c6ded1bdb5
+</details>
+
+
 Check out the [Devpost page](https://devpost.com/software/stitch-60vxhj)!
 
 ## At a Glance
